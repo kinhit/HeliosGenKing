@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/SegFault42/HeliosGen/main/public/HG.svg"
+    src="https://raw.githubusercontent.com/kinhit/HeliosGenKing/main/public/HG.svg"
     alt="HeliosGen"
     width="64"
   />
@@ -273,8 +273,9 @@ Platform-specific system deps:
 ```bash
 git clone https://github.com/kinhit/HeliosGenKing.git
 cd HeliosGenKing
-npm install
-npm run desktop:build
+corepack enable
+pnpm install
+pnpm desktop:build
 ```
 
 Artifacts land in `src-tauri/target/release/bundle/`:

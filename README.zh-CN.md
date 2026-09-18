@@ -27,7 +27,7 @@ HeliosGenKing 在保留原有工作流画布、图片/视频生成、素材库�
 - 本地图片在图生视频前上传到 Magnific 临时素材服务，结果再保存回本地媒体库。
 - 使用 SQLite 保存本地生成任务和远程任务 ID，应用重启后可以继续轮询未完成任务。
 
-Magnific 接口参考官方文档：[API 文档](https://docs.magnific.com/llms.txt)、[文件上传](https://docs.magnific.com/upload-files)、[Mystic](https://docs.magnific.com/api-reference/mystic/post-mystic)、[LTX 视频](https://docs.magnific.com/api-reference/text-to-video/ltx-2-pro)。
+Magnific 接口参考官方文档：[完整 API 文档](https://docs.magnific.com/llms-full.txt)、[文件上传](https://docs.magnific.com/upload-files)、[图像模型](https://www.magnific.com/ai/docs/image-ai-models)、[视频模型](https://www.magnific.com/ai/docs/video-ai-models)。
 
 ## 快速开始
 
@@ -85,6 +85,8 @@ AZURE_API_KEY=
 - Z-Image（Z-AI）
 - Grok Imagine（X）
 - Magnific Mystic：Realism / Fluid / Flexible / Zen
+- Magnific Google Nano Banana 2、Google Nano Banana Pro
+- Magnific GPT Image 2、GPT Image 2.5
 
 ### 视频
 
@@ -95,6 +97,26 @@ AZURE_API_KEY=
 - HappyHorse（Alibaba）
 - Magnific LTX Video 2.0 Pro：文生视频 / 图生视频
 - Magnific Kling 2.6 Pro：图生视频和音频生成
+- Magnific Seedance 2.5、2.0、2.0 Fast、2.0 Mini（支持首帧/尾帧、比例、时长、分辨率和音频选项）
+
+> Magnific 官方 API 的正式名称是“GPT Image 2”和“GPT Image 2.5”。另外，Magnific 文档将 Nano Banana 2 映射为 Nano Banana Pro Flash API 接口，代码已使用该正式接口路径。
+
+## 版本号管理
+
+每次发布前都必须递增版本号。项目提供自动同步脚本，会同时更新
+`package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 和
+`src-tauri/Cargo.lock`：
+
+```bash
+pnpm version:patch       # 修复版本，例如 1.3.0 → 1.3.1
+pnpm version:minor       # 功能版本，例如 1.3.0 → 1.4.0
+pnpm version:major       # 重大版本，例如 1.3.0 → 2.0.0
+pnpm version:bump 1.4.0  # 直接指定版本号
+pnpm version:check       # 检查所有文件是否一致
+```
+
+脚本不会自动创建或推送 Git 标签。确认改动后，再创建类似 `v1.4.0` 的发布标签；
+GitHub Actions 会自动检查标签版本和桌面安装包版本是否一致。
 
 ## 本地数据位置
 

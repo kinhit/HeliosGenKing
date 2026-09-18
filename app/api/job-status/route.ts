@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
           storedGeneration.model,
           result.type === "video" ? "video" : "image",
           storedGeneration.user_id,
+          storedGeneration.provider_status_endpoint,
         );
       } else if (!taskId.startsWith("azure-") && !taskId.startsWith("magnific-")) {
         resumeKieJob(taskId, result.type === "video" ? "video" : "image");
@@ -62,7 +63,14 @@ export async function GET(req: NextRequest) {
     }
     const type = storedGeneration.generation_type === "video" ? "video" : "image";
     jobStore.set(taskId, { status: "pending", type, userId: storedGeneration.user_id ?? undefined });
-    resumeMagnificJob(taskId, storedGeneration.provider_task_id, storedGeneration.model, type, storedGeneration.user_id);
+    resumeMagnificJob(
+      taskId,
+      storedGeneration.provider_task_id,
+      storedGeneration.model,
+      type,
+      storedGeneration.user_id,
+      storedGeneration.provider_status_endpoint,
+    );
     return NextResponse.json({ status: "pending", type });
   }
 

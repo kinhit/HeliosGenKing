@@ -16,6 +16,7 @@ import { getAzureKeyForUser } from "@/lib/getAzureKey";
 import { getMagnificKeyForUser } from "@/lib/getMagnificKey";
 import { pollMagnificJob } from "@/lib/magnificJobPoller";
 import { MAGNIFIC_BASE, buildMagnificImageInput, taskIdFromResponse } from "@/lib/magnific";
+import { uploadMagnificAsset } from "@/lib/magnificUpload";
 import { GUEST_USER_ID } from "@/lib/guestMode";
 import * as guestDb from "@/lib/guest/db";
 
@@ -333,7 +334,25 @@ export async function POST(req: NextRequest) {
     }
 
     const endpoint = `${MAGNIFIC_BASE}${cfg.magnific.endpoint}`;
-    const input = buildMagnificImageInput(cfg, prompt, aspectRatio, quality || cfg.defaultQuality || "2k");
+    let magnificImageUrls: string[] = [];
+    if (cfg.magnific.imageInputKey && r2ImageUrls.length > 0) {
+      try {
+        const maxImages = cfg.magnific.imageInputMax ?? cfg.maxImages ?? r2ImageUrls.length;
+        magnificImageUrls = await Promise.all(
+          r2ImageUrls.slice(0, maxImages).map((url) => uploadMagnificAsset(url, magnificKey)),
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return NextResponse.json({ error: `Magnific reference upload failed: ${message}` }, { status: 502 });
+      }
+    }
+    const input = buildMagnificImageInput(
+      cfg,
+      prompt,
+      aspectRatio,
+      quality || cfg.defaultQuality || "2k",
+      magnificImageUrls,
+    );
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "x-magnific-api-key": magnificKey, "Content-Type": "application/json" },

@@ -66,19 +66,32 @@ export async function POST(req: NextRequest) {
     const startFrameUrl = rawStartFrame
       ? await uploadMagnificAsset(rawStartFrame, magnificKey)
       : undefined;
+    const endFrameUrl = rawEndFrame
+      ? await uploadMagnificAsset(rawEndFrame, magnificKey)
+      : undefined;
     const requestedDuration = Number(duration);
+    const safeDuration = Number.isFinite(requestedDuration) ? requestedDuration : cfg.defaultDuration;
     const clampedDuration = cfg.durations.length > 0
-      ? Math.max(cfg.apiInput.durationMin, Math.min(cfg.apiInput.durationMax, requestedDuration || cfg.defaultDuration))
+      ? cfg.durations.reduce((closest, value) =>
+          Math.abs(value - safeDuration) < Math.abs(closest - safeDuration) ? value : closest,
+        cfg.durations[0])
       : cfg.defaultDuration;
+    const requestedResolution = typeof rawResolution === "string" ? rawResolution : "";
+    const resolution = cfg.resolutions?.includes(requestedResolution)
+      ? requestedResolution
+      : (cfg.defaultResolution || cfg.resolutions?.[0] || "720p");
+    const createEndpoint = cfg.magnific.createEndpointByResolution?.[resolution] ?? cfg.magnific.createEndpoint;
+    const statusEndpoint = cfg.magnific.statusEndpointByResolution?.[resolution] ?? cfg.magnific.statusEndpoint;
     const requestedFps = Number(body.fps);
     const fps = Number.isFinite(requestedFps) ? requestedFps : (cfg.magnific.defaultFps ?? 25);
     const input = buildMagnificVideoInput({
       model: cfg,
       prompt,
       startFrameUrl,
+      endFrameUrl,
       aspectRatio,
       duration: clampedDuration,
-      resolution: rawResolution || cfg.defaultResolution || "1080p",
+      resolution,
       sound: Boolean(sound),
       seed: seed === undefined || seed === null ? undefined : Number(seed),
       fps,
@@ -86,12 +99,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (debugOnly) {
-      const endpoint = `${MAGNIFIC_BASE}${cfg.magnific.createEndpoint}`;
+      const endpoint = `${MAGNIFIC_BASE}${createEndpoint}`;
       console.log(`[DEBUG] Magnific generate-video payload → ${endpoint}`, JSON.stringify(input, null, 2));
       return NextResponse.json({ debugPayload: input, debugEndpoint: endpoint });
     }
 
-    const createRes = await fetch(`${MAGNIFIC_BASE}${cfg.magnific.createEndpoint}`, {
+    const createRes = await fetch(`${MAGNIFIC_BASE}${createEndpoint}`, {
       method: "POST",
       headers: { "x-magnific-api-key": magnificKey, "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -114,6 +127,7 @@ export async function POST(req: NextRequest) {
     guestDb.insertGeneration({
       task_id: taskId,
       provider_task_id: remoteTaskId,
+      provider_status_endpoint: statusEndpoint,
       provider: "magnific",
       user_id: userId,
       generation_type: "video",
@@ -123,9 +137,16 @@ export async function POST(req: NextRequest) {
       aspect_ratio: aspectRatio,
       duration: clampedDuration,
       sound: Boolean(sound),
-      reference_image_urls: startFrameUrl ? [startFrameUrl] : undefined,
+      reference_image_urls: [startFrameUrl, endFrameUrl].filter((url): url is string => Boolean(url)),
     });
-    pollMagnificJob({ localTaskId: taskId, remoteTaskId, modelId: videoModel, type: "video", userId });
+    pollMagnificJob({
+      localTaskId: taskId,
+      remoteTaskId,
+      modelId: videoModel,
+      type: "video",
+      userId,
+      statusEndpoint,
+    });
     return NextResponse.json({ taskId });
   }
 

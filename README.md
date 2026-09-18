@@ -153,6 +153,8 @@ You only pay for what you generate.
 - Z-Image (Z-AI)
 - Grok Imagine (X)
 - Magnific Mystic — Realism / Fluid / Flexible / Zen
+- Magnific Google Nano Banana 2 / Google Nano Banana Pro
+- Magnific GPT Image 2 / GPT Image 2.5
 
 ## Videos
 - Veo 3.1 Lite / Fast / Quality, Gemini Omni Video (Google)
@@ -162,6 +164,7 @@ You only pay for what you generate.
 - HappyHorse (Alibaba)
 - Magnific LTX Video 2.0 Pro — text-to-video / image-to-video
 - Magnific Kling 2.6 Pro — image-to-video with audio
+- Magnific Seedance 2.5 / 2.0 / 2.0 Fast / 2.0 Mini
 
 More models are coming.
 
@@ -187,11 +190,29 @@ window; the choice is saved locally for the next launch.
 ## ✨ Magnific API
 
 Magnific models are available after adding a key under **Settings → API Keys**.
-The integration supports Mystic image generation and Magnific video endpoints
-for LTX Video 2.0 Pro (text-to-video and image-to-video) and Kling 2.6 Pro.
-Local reference media is uploaded to Magnific's temporary asset service before
-image-to-video generation. Generated results are downloaded back into the
-local HeliosGen media library.
+The integration supports Mystic, Google Nano Banana 2, Google Nano Banana Pro,
+GPT Image 2, GPT Image 2.5, LTX Video 2.0 Pro, Kling 2.6 Pro, and Seedance 2.5 /
+2.0 / Fast / Mini. Local reference media is uploaded to Magnific's temporary
+asset service before reference-based generation. Generated results are
+downloaded back into the local HeliosGen media library.
+
+### Versioning
+
+Every release must use a new semantic version. The version bump helper keeps
+`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and
+`src-tauri/Cargo.lock` synchronized:
+
+```bash
+pnpm version:patch   # bug fix: 1.3.0 → 1.3.1
+pnpm version:minor   # feature: 1.3.0 → 1.4.0
+pnpm version:major   # breaking change: 1.3.0 → 2.0.0
+pnpm version:bump 1.4.0  # explicit version
+pnpm version:check
+```
+
+The helper does not create or push Git tags automatically. After reviewing the
+generated changes, create a release tag such as `v1.4.0`; GitHub Actions checks
+that the tag and all bundled version files match.
 
 ## 🤖 Codex CLI (optional — alternate GPT Image 2 backend)
 

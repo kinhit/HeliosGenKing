@@ -19,6 +19,7 @@ type PollOptions = {
   modelId: string;
   type: "image" | "video";
   userId?: string | null;
+  statusEndpoint?: string;
 };
 
 async function fetchResult(url: string, apiKey: string): Promise<unknown> {
@@ -55,7 +56,7 @@ async function runPoll(options: PollOptions): Promise<void> {
 
   const endpoint = options.type === "image"
     ? (model as ImageModel).magnific?.endpoint
-    : (model as VideoModel).magnific?.statusEndpoint;
+    : options.statusEndpoint ?? (model as VideoModel).magnific?.statusEndpoint;
   if (!endpoint) throw new Error(`Magnific status endpoint is missing for ${options.modelId}`);
 
   const url = `${MAGNIFIC_BASE}${endpoint.replace(/\/$/, "")}/${encodeURIComponent(options.remoteTaskId)}`;
@@ -117,7 +118,8 @@ export function resumeMagnificJob(
   modelId: string,
   type: "image" | "video",
   userId?: string | null,
+  statusEndpoint?: string,
 ): void {
   if (!remoteTaskId || !modelId) return;
-  start({ localTaskId, remoteTaskId, modelId, type, userId });
+  start({ localTaskId, remoteTaskId, modelId, type, userId, statusEndpoint });
 }

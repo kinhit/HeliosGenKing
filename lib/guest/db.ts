@@ -11,6 +11,7 @@ interface Generation {
   user_id: string | null;
   task_id: string;
   provider_task_id?: string;
+  provider_status_endpoint?: string;
   provider?: string;
   generation_type: string;
   status: string;
@@ -69,6 +70,7 @@ function rowToGeneration(r: GenRow): Generation {
     user_id: (r.user_id as string) ?? null,
     task_id: r.task_id as string,
     provider_task_id: (r.provider_task_id as string) ?? undefined,
+    provider_status_endpoint: (r.provider_status_endpoint as string) ?? undefined,
     provider: (r.provider as string) ?? undefined,
     generation_type: r.generation_type as string,
     status: r.status as string,
@@ -101,14 +103,15 @@ export function insertGeneration(data: Omit<Generation, "id" | "created_at" | "u
   db()
     .prepare(`
       INSERT INTO generations
-        (id, user_id, task_id, provider_task_id, provider, generation_type, status, prompt, model, aspect_ratio,
+        (id, user_id, task_id, provider_task_id, provider_status_endpoint, provider, generation_type, status, prompt, model, aspect_ratio,
          quality, azure_resolution, duration, kling_mode, sound, reference_image_urls,
          image_url, image_urls, video_url, error_msg, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(task_id) DO NOTHING
     `)
     .run(
-      randomUUID(), data.user_id ?? null, data.task_id, data.provider_task_id ?? null, data.provider ?? null,
+      randomUUID(), data.user_id ?? null, data.task_id, data.provider_task_id ?? null,
+      data.provider_status_endpoint ?? null, data.provider ?? null,
       data.generation_type, data.status,
       data.prompt ?? null, data.model ?? null, data.aspect_ratio ?? null, data.quality ?? null,
       data.azure_resolution ?? null, data.duration ?? null, data.kling_mode ?? null,
@@ -136,7 +139,7 @@ export function updateGeneration(
 
 export function recoverJob(
   taskId: string,
-): Pick<Generation, "user_id" | "status" | "video_url" | "image_url" | "image_urls" | "error_msg" | "provider_task_id" | "provider" | "model" | "generation_type"> | null {
+): Pick<Generation, "user_id" | "status" | "video_url" | "image_url" | "image_urls" | "error_msg" | "provider_task_id" | "provider_status_endpoint" | "provider" | "model" | "generation_type"> | null {
   const r = db().prepare("SELECT * FROM generations WHERE task_id = ?").get(taskId) as GenRow | undefined;
   return r ? rowToGeneration(r) : null;
 }

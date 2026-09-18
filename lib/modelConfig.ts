@@ -97,6 +97,18 @@ export interface ImageModel {
   magnific?: {
     endpoint: string;
     model?: string;
+    /** Optional reference-image field used by the Magnific endpoint. */
+    imageInputKey?: string;
+    /** Maximum number of reference images accepted by this endpoint. */
+    imageInputMax?: number;
+    /** Wrap each reference URL in the endpoint's `{ image, mime_type }` shape. */
+    imageInputObjects?: boolean;
+    /** Whether the endpoint expects a raw ratio such as `16:9`. */
+    aspectRatioFormat?: "raw" | "mapped";
+    /** Whether the endpoint expects `1K`/`2K`/`4K` instead of lowercase values. */
+    qualityFormat?: "upper" | "lower";
+    /** Extra fixed fields to merge into the request body. */
+    extra?: Record<string, unknown>;
   };
 }
 
@@ -387,6 +399,118 @@ export const IMAGE_MODELS: ImageModel[] = [
       promptMaxLength: 20000,
     },
   },
+  // ── Magnific image models ───────────────────────────────────────────────────
+  // These model entries use Magnific's provider-specific endpoints. They are
+  // intentionally separate from the Kie.ai Google entries above so users can
+  // choose the provider explicitly and keep provider credentials isolated.
+  {
+    id: "magnific-google-nano-banana-2",
+    apiId: "nano-banana-pro-flash",
+    name: "Google Nano Banana 2",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "5:4", "4:5", "21:9"],
+    supportsImages: true,
+    maxImages: 3,
+    supportsQuality: true,
+    defaultQuality: "1k",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      imageInputKey: "image_urls",
+      qualityKey: "resolution",
+      qualityMap: { "1k": "1K", "2k": "2K", "4k": "4K" },
+      qualityOptions: ["1k", "2k", "4k"],
+      promptMaxLength: 3000,
+      outputFormat: "jpg",
+    },
+    magnific: {
+      endpoint: "/v1/ai/text-to-image/nano-banana-pro-flash",
+      imageInputKey: "reference_images",
+      imageInputMax: 3,
+      imageInputObjects: true,
+      aspectRatioFormat: "raw",
+      qualityFormat: "upper",
+    },
+  },
+  {
+    id: "magnific-google-nano-banana-pro",
+    apiId: "nano-banana-pro",
+    name: "Google Nano Banana Pro",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "4:5", "5:4", "2:3", "3:2", "21:9"],
+    supportsImages: true,
+    maxImages: 14,
+    supportsQuality: true,
+    defaultQuality: "2k",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      imageInputKey: "reference_images",
+      qualityKey: "resolution",
+      qualityMap: { "1k": "1K", "2k": "2K", "4k": "4K" },
+      qualityOptions: ["1k", "2k", "4k"],
+      promptMaxLength: 3000,
+      outputFormat: "jpg",
+    },
+    magnific: {
+      endpoint: "/v1/ai/text-to-image/nano-banana-pro",
+      imageInputKey: "reference_images",
+      imageInputMax: 14,
+      imageInputObjects: true,
+      aspectRatioFormat: "raw",
+      qualityFormat: "upper",
+    },
+  },
+  {
+    id: "magnific-gpt-image-2",
+    apiId: "gpt-image-2",
+    name: "GPT Image 2",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
+    supportsImages: false,
+    maxImages: 0,
+    supportsQuality: true,
+    defaultQuality: "2k",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      qualityKey: "resolution",
+      qualityMap: { "1k": "1k", "2k": "2k", "4k": "4k" },
+      qualityOptions: ["1k", "2k", "4k"],
+      promptMaxLength: 32000,
+    },
+    magnific: {
+      endpoint: "/v1/ai/text-to-image/gpt-image-2",
+      aspectRatioFormat: "mapped",
+      qualityFormat: "lower",
+      extra: { quality: "high" },
+    },
+  },
+  {
+    id: "magnific-gpt-image-2-5",
+    apiId: "gpt-image-2-5",
+    name: "GPT Image 2.5",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
+    supportsImages: false,
+    maxImages: 0,
+    supportsQuality: true,
+    defaultQuality: "2k",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      qualityKey: "resolution",
+      qualityMap: { "1k": "1k", "2k": "2k", "4k": "4k" },
+      qualityOptions: ["1k", "2k", "4k"],
+      promptMaxLength: 32000,
+    },
+    magnific: {
+      endpoint: "/v1/ai/text-to-image/gpt-image-2-5",
+      aspectRatioFormat: "mapped",
+      qualityFormat: "lower",
+      extra: { quality: "medium", variant: "flare" },
+    },
+  },
   // ── Magnific Mystic ────────────────────────────────────────────────────────
   // Mystic exposes its visual model as a request field rather than as a
   // separate endpoint. Keeping these as separate app models gives users a
@@ -408,7 +532,7 @@ export const IMAGE_MODELS: ImageModel[] = [
       qualityOptions: ["1k", "2k", "4k"],
       promptMaxLength: 10000,
     },
-    magnific: { endpoint: "/v1/ai/mystic", model: "realism" },
+    magnific: { endpoint: "/v1/ai/mystic", model: "realism", extra: { filter_nsfw: true } },
   },
   {
     id: "magnific-mystic-fluid",
@@ -427,7 +551,7 @@ export const IMAGE_MODELS: ImageModel[] = [
       qualityOptions: ["1k", "2k", "4k"],
       promptMaxLength: 10000,
     },
-    magnific: { endpoint: "/v1/ai/mystic", model: "fluid" },
+    magnific: { endpoint: "/v1/ai/mystic", model: "fluid", extra: { filter_nsfw: true } },
   },
   {
     id: "magnific-mystic-flexible",
@@ -446,7 +570,7 @@ export const IMAGE_MODELS: ImageModel[] = [
       qualityOptions: ["1k", "2k", "4k"],
       promptMaxLength: 10000,
     },
-    magnific: { endpoint: "/v1/ai/mystic", model: "flexible" },
+    magnific: { endpoint: "/v1/ai/mystic", model: "flexible", extra: { filter_nsfw: true } },
   },
   {
     id: "magnific-mystic-zen",
@@ -465,7 +589,7 @@ export const IMAGE_MODELS: ImageModel[] = [
       qualityOptions: ["1k", "2k", "4k"],
       promptMaxLength: 10000,
     },
-    magnific: { endpoint: "/v1/ai/mystic", model: "zen" },
+    magnific: { endpoint: "/v1/ai/mystic", model: "zen", extra: { filter_nsfw: true } },
   },
 ];
 
@@ -601,7 +725,23 @@ export interface VideoModel {
   magnific?: {
     createEndpoint: string;
     statusEndpoint: string;
+    /** Resolution-specific create routes used by APIs such as Seedance. */
+    createEndpointByResolution?: Record<string, string>;
+    /** Resolution-specific status routes used by APIs such as Seedance 2.5. */
+    statusEndpointByResolution?: Record<string, string>;
     inputMode: "text-to-video" | "image-to-video";
+    /** Optional field used for an uploaded start/reference image. */
+    imageInputKey?: string;
+    /** Optional field used for an uploaded last-frame image. */
+    endImageInputKey?: string;
+    /** Include the app's aspect ratio as Magnific's aspect_ratio field. */
+    includeAspectRatio?: boolean;
+    /** Include the app's resolution in the body (false when the route encodes it). */
+    includeResolution?: boolean;
+    /** Audio field name; existing Magnific APIs use generate_audio, Seedance uses sound_effects. */
+    soundKey?: string;
+    /** Include the app's FPS control as Magnific's fps field. */
+    includeFps?: boolean;
     promptMaxLength?: number;
     fpsOptions?: number[];
     defaultFps?: number;
@@ -1128,7 +1268,165 @@ export const VIDEO_MODELS: VideoModel[] = [
       extra: { background_source: "input_video" }, // background_source not user-selectable yet — default to video background
     },
   },
-  // ── Magnific video ─────────────────────────────────────────────────────────
+  // ── Magnific Seedance video ────────────────────────────────────────────────
+  {
+    id: "magnific-seedance-2-5",
+    apiId: "seedance-2-5",
+    name: "Seedance 2.5",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    defaultDuration: 5,
+    defaultRatio: "16:9",
+    handles: ["prompt", "startFrame", "endFrame"],
+    sound: true,
+    supportsSeeds: true,
+    resolutions: ["480p", "720p", "1080p"],
+    defaultResolution: "720p",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      durationMin: 4,
+      durationMax: 30,
+      promptMaxLength: 40000,
+    },
+    magnific: {
+      createEndpoint: "/v1/ai/video/seedance-2-5-pro-720p",
+      statusEndpoint: "/v1/ai/video/seedance-2-5-pro-720p",
+      createEndpointByResolution: {
+        "480p": "/v1/ai/video/seedance-2-5-pro-480p",
+        "720p": "/v1/ai/video/seedance-2-5-pro-720p",
+        "1080p": "/v1/ai/video/seedance-2-5-pro-1080p",
+      },
+      statusEndpointByResolution: {
+        "480p": "/v1/ai/video/seedance-2-5-pro-480p",
+        "720p": "/v1/ai/video/seedance-2-5-pro-720p",
+        "1080p": "/v1/ai/video/seedance-2-5-pro-1080p",
+      },
+      inputMode: "image-to-video",
+      imageInputKey: "image",
+      endImageInputKey: "image_end",
+      includeAspectRatio: true,
+      includeResolution: false,
+      soundKey: "sound_effects",
+      promptMaxLength: 40000,
+    },
+  },
+  {
+    id: "magnific-seedance-2-0",
+    apiId: "seedance-2",
+    name: "Seedance 2.0",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
+    durations: [5, 10],
+    defaultDuration: 5,
+    defaultRatio: "16:9",
+    handles: ["prompt", "startFrame", "endFrame"],
+    sound: true,
+    supportsSeeds: true,
+    resolutions: ["480p", "720p", "1080p", "2160p"],
+    defaultResolution: "720p",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      durationMin: 5,
+      durationMax: 10,
+      promptMaxLength: 40000,
+    },
+    magnific: {
+      createEndpoint: "/v1/ai/video/seedance-2-pro-720p",
+      statusEndpoint: "/v1/ai/video/seedance-2-pro",
+      createEndpointByResolution: {
+        "480p": "/v1/ai/video/seedance-2-pro-480p",
+        "720p": "/v1/ai/video/seedance-2-pro-720p",
+        "1080p": "/v1/ai/video/seedance-2-pro-1080p",
+        "2160p": "/v1/ai/video/seedance-2-pro-4k",
+      },
+      inputMode: "image-to-video",
+      imageInputKey: "image",
+      endImageInputKey: "image_end",
+      includeAspectRatio: true,
+      includeResolution: false,
+      soundKey: "sound_effects",
+      promptMaxLength: 40000,
+    },
+  },
+  {
+    id: "magnific-seedance-2-0-fast",
+    apiId: "seedance-2-fast",
+    name: "Seedance 2.0 Fast",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
+    durations: [5, 10],
+    defaultDuration: 5,
+    defaultRatio: "16:9",
+    handles: ["prompt", "startFrame", "endFrame"],
+    sound: true,
+    supportsSeeds: true,
+    resolutions: ["480p", "720p"],
+    defaultResolution: "720p",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      durationMin: 5,
+      durationMax: 10,
+      promptMaxLength: 40000,
+    },
+    magnific: {
+      createEndpoint: "/v1/ai/video/seedance-2-fast-720p",
+      statusEndpoint: "/v1/ai/video/seedance-2-fast",
+      createEndpointByResolution: {
+        "480p": "/v1/ai/video/seedance-2-fast-480p",
+        "720p": "/v1/ai/video/seedance-2-fast-720p",
+      },
+      inputMode: "image-to-video",
+      imageInputKey: "image",
+      endImageInputKey: "image_end",
+      includeAspectRatio: true,
+      includeResolution: false,
+      soundKey: "sound_effects",
+      promptMaxLength: 40000,
+    },
+  },
+  {
+    id: "magnific-seedance-2-mini",
+    apiId: "seedance-2-mini",
+    name: "Seedance 2.0 Mini",
+    provider: "Magnific",
+    backend: "magnific",
+    ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
+    durations: [5, 10],
+    defaultDuration: 5,
+    defaultRatio: "16:9",
+    handles: ["prompt", "startFrame", "endFrame"],
+    sound: true,
+    supportsSeeds: true,
+    resolutions: ["480p", "720p"],
+    defaultResolution: "720p",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      durationMin: 5,
+      durationMax: 10,
+      promptMaxLength: 40000,
+    },
+    magnific: {
+      createEndpoint: "/v1/ai/video/seedance-2-mini-720p",
+      statusEndpoint: "/v1/ai/video/seedance-2-mini",
+      createEndpointByResolution: {
+        "480p": "/v1/ai/video/seedance-2-mini-480p",
+        "720p": "/v1/ai/video/seedance-2-mini-720p",
+      },
+      inputMode: "image-to-video",
+      imageInputKey: "image",
+      endImageInputKey: "image_end",
+      includeAspectRatio: true,
+      includeResolution: false,
+      soundKey: "sound_effects",
+      promptMaxLength: 40000,
+    },
+  },
+
+  // ── Magnific existing video models ─────────────────────────────────────────
   {
     id: "magnific-ltx-2-pro-t2v",
     apiId: "ltx-2-pro",
@@ -1156,6 +1454,7 @@ export const VIDEO_MODELS: VideoModel[] = [
       promptMaxLength: 2000,
       fpsOptions: [25, 50],
       defaultFps: 25,
+      includeFps: true,
     },
   },
   {
@@ -1186,6 +1485,7 @@ export const VIDEO_MODELS: VideoModel[] = [
       promptMaxLength: 2000,
       fpsOptions: [25, 50],
       defaultFps: 25,
+      includeFps: true,
     },
   },
   {
@@ -1211,6 +1511,8 @@ export const VIDEO_MODELS: VideoModel[] = [
       createEndpoint: "/v1/ai/image-to-video/kling-v2-6-pro",
       statusEndpoint: "/v1/ai/image-to-video/kling-v2-6",
       inputMode: "image-to-video",
+      imageInputKey: "image_url",
+      includeAspectRatio: true,
       promptMaxLength: 2500,
     },
   },

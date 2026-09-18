@@ -80,6 +80,7 @@ function createSchema(d: DatabaseSync): void {
   // a desktop restart.
   for (const column of [
     ["provider_task_id", "TEXT"],
+    ["provider_status_endpoint", "TEXT"],
     ["provider", "TEXT"],
   ] as const) {
     try {

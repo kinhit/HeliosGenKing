@@ -16,9 +16,13 @@ const IMAGE_RATIOS: Record<string, string> = {
 };
 
 const VIDEO_RATIOS: Record<string, string> = {
+  "21:9": "film_horizontal_21_9",
   "1:1": "square_1_1",
   "16:9": "widescreen_16_9",
   "9:16": "social_story_9_16",
+  "4:3": "classic_4_3",
+  "3:4": "traditional_3_4",
+  "9:21": "film_vertical_9_21",
 };
 
 export type MagnificModel = ImageModel | VideoModel;
@@ -61,20 +65,38 @@ export function buildMagnificImageInput(
   prompt: string,
   aspectRatio: string,
   quality: string,
+  imageUrls: string[] = [],
 ): Record<string, unknown> {
-  return {
+  const qualityKey = model.apiInput.qualityKey ?? "resolution";
+  const mappedQuality = model.apiInput.qualityMap?.[quality] ?? magnificResolution(quality);
+  const qualityValue = model.magnific?.qualityFormat === "upper" ? mappedQuality.toUpperCase() : mappedQuality;
+  const aspectRatioValue = model.magnific?.aspectRatioFormat === "raw"
+    ? aspectRatio
+    : magnificImageAspectRatio(aspectRatio);
+  const input: Record<string, unknown> = {
     prompt: prompt.slice(0, model.apiInput.promptMaxLength),
-    resolution: magnificResolution(quality),
-    aspect_ratio: magnificImageAspectRatio(aspectRatio),
-    model: model.magnific?.model,
-    filter_nsfw: true,
+    aspect_ratio: aspectRatioValue,
   };
+
+  input[qualityKey] = qualityValue;
+  if (model.magnific?.model) input.model = model.magnific.model;
+
+  const imageInputKey = model.magnific?.imageInputKey ?? model.apiInput.imageInputKey;
+  if (imageInputKey && imageUrls.length > 0) {
+    input[imageInputKey] = model.magnific?.imageInputObjects
+      ? imageUrls.map((image) => ({ image }))
+      : imageUrls;
+  }
+
+  Object.assign(input, model.magnific?.extra ?? {});
+  return input;
 }
 
 export function buildMagnificVideoInput(opts: {
   model: VideoModel;
   prompt?: string;
   startFrameUrl?: string;
+  endFrameUrl?: string;
   aspectRatio: string;
   duration: number;
   resolution: string;
@@ -89,13 +111,17 @@ export function buildMagnificVideoInput(opts: {
 
   const input: Record<string, unknown> = {
     prompt: (opts.prompt ?? "").slice(0, magnific.promptMaxLength ?? model.apiInput.promptMaxLength ?? 2500),
-    generate_audio: model.sound ? Boolean(opts.sound) : false,
     duration: opts.duration,
-    resolution: opts.resolution,
   };
 
+  input[magnific.soundKey ?? "generate_audio"] = model.sound ? Boolean(opts.sound) : false;
+  if (magnific.includeResolution !== false) input.resolution = opts.resolution;
+
   if (magnific.inputMode === "image-to-video" && opts.startFrameUrl) {
-    input.image_url = opts.startFrameUrl;
+    input[magnific.imageInputKey ?? "image_url"] = opts.startFrameUrl;
+  }
+  if (magnific.inputMode === "image-to-video" && opts.endFrameUrl) {
+    input[magnific.endImageInputKey ?? "last_frame_url"] = opts.endFrameUrl;
   }
 
   if (model.id === "magnific-kling-2-6-pro") {
@@ -104,9 +130,9 @@ export function buildMagnificVideoInput(opts: {
     input.cfg_scale = Number.isFinite(parsedCfgScale) ? Math.max(0, Math.min(1, parsedCfgScale)) : 0.5;
   } else {
     if (opts.seed !== undefined && Number.isFinite(opts.seed)) input.seed = opts.seed;
-    input.fps = opts.fps ?? magnific.defaultFps ?? 25;
+    if (magnific.includeAspectRatio) input.aspect_ratio = magnificVideoAspectRatio(opts.aspectRatio);
+    if (magnific.includeFps) input.fps = opts.fps ?? magnific.defaultFps ?? 25;
   }
 
   return input;
 }
-

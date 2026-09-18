@@ -97,6 +97,7 @@ export function buildMagnificVideoInput(opts: {
   prompt?: string;
   startFrameUrl?: string;
   endFrameUrl?: string;
+  referenceImageUrls?: string[];
   aspectRatio: string;
   duration: number;
   resolution: string;
@@ -117,11 +118,15 @@ export function buildMagnificVideoInput(opts: {
   input[magnific.soundKey ?? "generate_audio"] = model.sound ? Boolean(opts.sound) : false;
   if (magnific.includeResolution !== false) input.resolution = opts.resolution;
 
+  const hasFrameInput = Boolean(opts.startFrameUrl || opts.endFrameUrl);
   if (magnific.inputMode === "image-to-video" && opts.startFrameUrl) {
     input[magnific.imageInputKey ?? "image_url"] = opts.startFrameUrl;
   }
   if (magnific.inputMode === "image-to-video" && opts.endFrameUrl) {
     input[magnific.endImageInputKey ?? "last_frame_url"] = opts.endFrameUrl;
+  }
+  if (model.apiInput.referenceImagesKey && opts.referenceImageUrls?.length && !hasFrameInput) {
+    input[model.apiInput.referenceImagesKey] = opts.referenceImageUrls;
   }
 
   if (model.id === "magnific-kling-2-6-pro") {

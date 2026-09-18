@@ -42,6 +42,10 @@ export const messages: Record<Locale, Record<string, string>> = {
     "generation.noApiKey": "No Kie.ai or Magnific API key configured — generation is disabled.",
     "generation.kieKeyMissing": "No Kie.ai API key configured. Add it in Settings.",
     "generation.magnificKeyMissing": "No Magnific API key configured. Add it in Settings.",
+    "generation.magnificUnsupportedMedia": "Magnific supports PNG, JPEG, WebP, MP4, WebM, MOV, MP3, WAV, M4A, and OGG files only.",
+    "generation.referenceImagePreparationFailed": "A reference image could not be prepared. Generation was not started.",
+    "generation.connectionTimedOut": "The generation service connection timed out. Check your network connection and try again.",
+    "generation.frameReferenceConflict": "Reference images cannot be used together with a start or end frame for this model.",
     "generation.openSettings": "Add in Settings →",
   },
   "zh-CN": {
@@ -83,6 +87,10 @@ export const messages: Record<Locale, Record<string, string>> = {
     "generation.noApiKey": "未配置 Kie.ai 或 Magnific API Key，无法生成。",
     "generation.kieKeyMissing": "未配置 Kie.ai API Key，请前往设置添加。",
     "generation.magnificKeyMissing": "未配置 Magnific API Key，请前往设置添加。",
+    "generation.magnificUnsupportedMedia": "Magnific 仅支持 PNG、JPEG、WebP、MP4、WebM、MOV、MP3、WAV、M4A 和 OGG 格式的素材。",
+    "generation.referenceImagePreparationFailed": "有参考图无法准备完成，已停止生成，避免在缺少参考图的情况下提交请求。",
+    "generation.connectionTimedOut": "生成服务连接超时，请检查网络连接后重试。",
+    "generation.frameReferenceConflict": "该模型不能同时使用参考图与首帧或尾帧。",
     "generation.openSettings": "前往设置 →",
   },
 };

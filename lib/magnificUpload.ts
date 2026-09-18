@@ -9,28 +9,14 @@ import { readFile } from "node:fs/promises";
 import { join, normalize } from "node:path";
 import { MEDIA_DIR } from "@/lib/guest/paths";
 import { MAGNIFIC_BASE } from "@/lib/magnific";
-
-const MIME_BY_EXT: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  gif: "image/gif",
-  mp4: "video/mp4",
-  webm: "video/webm",
-  mov: "video/quicktime",
-  mp3: "audio/mpeg",
-  wav: "audio/wav",
-  m4a: "audio/mp4",
-  ogg: "audio/ogg",
-};
+import {
+  assertMagnificSupportedMimeType,
+  mimeFromPath,
+  normaliseMimeType,
+  resolveMagnificMimeType,
+} from "@/lib/magnificMime";
 
 type MediaBytes = { bytes: Buffer; contentType: string };
-
-function mimeFromPath(path: string): string {
-  const extension = path.split(/[.?]/)[0].split(".").pop()?.toLowerCase() ?? "";
-  return MIME_BY_EXT[extension] ?? "application/octet-stream";
-}
 
 async function readMedia(url: string): Promise<MediaBytes> {
   if (url.startsWith("data:")) {
@@ -39,7 +25,7 @@ async function readMedia(url: string): Promise<MediaBytes> {
     const bytes = match[2]
       ? Buffer.from(match[3], "base64")
       : Buffer.from(decodeURIComponent(match[3]), "utf8");
-    return { bytes, contentType: match[1] || "application/octet-stream" };
+    return { bytes, contentType: normaliseMimeType(match[1]) ?? "application/octet-stream" };
   }
 
   if (url.startsWith("/generated/")) {
@@ -51,14 +37,17 @@ async function readMedia(url: string): Promise<MediaBytes> {
     if (!mediaPath.startsWith(normalize(MEDIA_DIR))) {
       throw new Error("Invalid local media path");
     }
-    return { bytes: await readFile(mediaPath), contentType: mimeFromPath(mediaPath) };
+    return {
+      bytes: await readFile(mediaPath),
+      contentType: mimeFromPath(mediaPath) ?? "application/octet-stream",
+    };
   }
 
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) throw new Error(`Unable to read media (${response.status})`);
   return {
     bytes: Buffer.from(await response.arrayBuffer()),
-    contentType: response.headers.get("content-type")?.split(";")[0].trim() || mimeFromPath(url),
+    contentType: resolveMagnificMimeType(response.headers.get("content-type"), url),
   };
 }
 
@@ -71,6 +60,7 @@ type UploadTicket = {
 /** Upload one local or remote media URL and return Magnific's temporary asset URL. */
 export async function uploadMagnificAsset(inputUrl: string, apiKey: string): Promise<string> {
   const { bytes, contentType } = await readMedia(inputUrl);
+  assertMagnificSupportedMimeType(contentType);
   const ticketResponse = await fetch(`${MAGNIFIC_BASE}/v1/ai/uploads/request-url`, {
     method: "POST",
     headers: { "x-magnific-api-key": apiKey, "Content-Type": "application/json" },

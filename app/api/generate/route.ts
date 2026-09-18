@@ -177,12 +177,20 @@ async function curlMultipartPost(
   }
 }
 
-// Resolve every image URL to an R2 CDN URL (uploads base64 / mirrors external URLs)
+// Resolve every image URL to local durable storage (uploads base64 / mirrors external URLs).
+// Do not silently discard a failed reference: generating without a user's reference
+// image is a materially different request.
 async function resolveImages(imageUrls: string[]): Promise<string[]> {
-  const resolved = await Promise.all(
-    imageUrls.slice(0, 14).map((u) => ensureR2(u, "references").catch(() => null))
+  const settled = await Promise.allSettled(
+    imageUrls.map((url) => ensureR2(url, "references")),
   );
-  return resolved.filter((u): u is string => u !== null);
+  const failed = settled.filter((result) => result.status === "rejected");
+  if (failed.length > 0) {
+    const first = failed[0] as PromiseRejectedResult;
+    const reason = first.reason instanceof Error ? first.reason.message : String(first.reason);
+    throw new Error(`Unable to prepare ${failed.length} reference image(s): ${reason}`);
+  }
+  return settled.map((result) => (result as PromiseFulfilledResult<string>).value);
 }
 
 // codex-imagegen (https://github.com/jdmnk/codex-imagegen-cli) only accepts these four sizes.
@@ -317,11 +325,21 @@ export async function POST(req: NextRequest) {
   const cfg = IMAGE_MODELS.find((m) => m.id === model);
   if (!cfg) return NextResponse.json({ error: `Unknown model: ${model}` }, { status: 400 });
 
+  if (!Array.isArray(imageUrls) || imageUrls.some((url) => typeof url !== "string" || !url)) {
+    return NextResponse.json({ error: "Reference images must be a list of valid URLs" }, { status: 400 });
+  }
+  if (imageUrls.length > cfg.maxImages) {
+    return NextResponse.json({
+      error: `Reference image limit exceeded: ${cfg.name} supports up to ${cfg.maxImages} image(s).`,
+    }, { status: 400 });
+  }
+
   let r2ImageUrls: string[] = [];
   try {
     r2ImageUrls = await resolveImages(imageUrls);
-  } catch {
-    // image mirroring failures are non-fatal — proceed without reference images
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const currentUserId = GUEST_USER_ID;

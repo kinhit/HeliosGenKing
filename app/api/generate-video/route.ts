@@ -58,17 +58,43 @@ export async function POST(req: NextRequest) {
   if (!cfg) return NextResponse.json({ error: `Unknown video model: ${videoModel}` }, { status: 400 });
 
   if (cfg.backend === "magnific" && cfg.magnific) {
+    if (!Array.isArray(rawRefImages) || rawRefImages.some((url) => typeof url !== "string" || !url)) {
+      return NextResponse.json({ error: "Reference images must be a list of valid URLs" }, { status: 400 });
+    }
+    const referenceImageInputs = rawRefImages as string[];
+    const maxReferenceImages = cfg.maxResources ?? 0;
+    if (referenceImageInputs.length > maxReferenceImages) {
+      return NextResponse.json({
+        error: `Reference image limit exceeded: ${cfg.name} supports up to ${maxReferenceImages} image(s).`,
+      }, { status: 400 });
+    }
+    if (referenceImageInputs.length > 0 && !cfg.apiInput.referenceImagesKey) {
+      return NextResponse.json({ error: `${cfg.name} does not support reference images.` }, { status: 400 });
+    }
+    if (referenceImageInputs.length > 0 && (rawStartFrame || rawEndFrame)) {
+      return NextResponse.json({
+        error: "Reference images cannot be combined with a start or end frame for this Magnific model.",
+      }, { status: 400 });
+    }
+
     const magnificKey = await getMagnificKeyForUser();
     if (!magnificKey) {
       return NextResponse.json({ error: "Magnific API key is not configured. Add it in Settings." }, { status: 401 });
     }
 
-    const startFrameUrl = rawStartFrame
-      ? await uploadMagnificAsset(rawStartFrame, magnificKey)
-      : undefined;
-    const endFrameUrl = rawEndFrame
-      ? await uploadMagnificAsset(rawEndFrame, magnificKey)
-      : undefined;
+    let startFrameUrl: string | undefined;
+    let endFrameUrl: string | undefined;
+    let referenceImageUrls: string[] = [];
+    try {
+      [startFrameUrl, endFrameUrl, referenceImageUrls] = await Promise.all([
+        rawStartFrame ? uploadMagnificAsset(rawStartFrame, magnificKey) : Promise.resolve(undefined),
+        rawEndFrame ? uploadMagnificAsset(rawEndFrame, magnificKey) : Promise.resolve(undefined),
+        Promise.all(referenceImageInputs.map((url) => uploadMagnificAsset(url, magnificKey))),
+      ]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: `Magnific reference upload failed: ${message}` }, { status: 502 });
+    }
     const requestedDuration = Number(duration);
     const safeDuration = Number.isFinite(requestedDuration) ? requestedDuration : cfg.defaultDuration;
     const clampedDuration = cfg.durations.length > 0
@@ -89,6 +115,7 @@ export async function POST(req: NextRequest) {
       prompt,
       startFrameUrl,
       endFrameUrl,
+      referenceImageUrls,
       aspectRatio,
       duration: clampedDuration,
       resolution,
@@ -137,7 +164,8 @@ export async function POST(req: NextRequest) {
       aspect_ratio: aspectRatio,
       duration: clampedDuration,
       sound: Boolean(sound),
-      reference_image_urls: [startFrameUrl, endFrameUrl].filter((url): url is string => Boolean(url)),
+      reference_image_urls: [startFrameUrl, endFrameUrl, ...referenceImageUrls]
+        .filter((url): url is string => Boolean(url)),
     });
     pollMagnificJob({
       localTaskId: taskId,

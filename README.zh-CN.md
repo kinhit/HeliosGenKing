@@ -97,9 +97,9 @@ AZURE_API_KEY=
 - HappyHorse（Alibaba）
 - Magnific LTX Video 2.0 Pro：文生视频 / 图生视频
 - Magnific Kling 2.6 Pro：图生视频和音频生成
-- Magnific Seedance 2.5、2.0、2.0 Fast、2.0 Mini（支持首帧/尾帧、比例、时长、分辨率和音频选项）
+- Magnific Seedance 2.5、2.0、2.0 Fast、2.0 Mini（支持最多 9 张参考图，或首帧与可选尾帧；两种输入方式不能同时使用，并支持比例、时长、分辨率和音频选项）
 
-> Magnific 官方 API 的正式名称是“GPT Image 2”和“GPT Image 2.5”。另外，Magnific 文档将 Nano Banana 2 映射为 Nano Banana Pro Flash API 接口，代码已使用该正式接口路径。
+> Magnific 官方 API 的正式名称是“GPT Image 2”和“GPT Image 2.5”。另外，Magnific 文档将 Nano Banana 2 映射为 Nano Banana Pro Flash API 接口，代码已使用该正式接口路径。参考素材上传仅接受 PNG、JPEG、WebP、MP4、WebM、MOV、MP3、WAV、M4A 和 OGG；不兼容格式会在提交生成前给出明确提示。
 
 ## 版本号管理
 
@@ -108,7 +108,7 @@ AZURE_API_KEY=
 `src-tauri/Cargo.lock`：
 
 ```bash
-pnpm version:patch       # 修复版本，例如 1.3.0 → 1.3.1
+pnpm version:patch       # 修复版本，例如 1.3.1 → 1.3.2
 pnpm version:minor       # 功能版本，例如 1.3.0 → 1.4.0
 pnpm version:major       # 重大版本，例如 1.3.0 → 2.0.0
 pnpm version:bump 1.4.0  # 直接指定版本号

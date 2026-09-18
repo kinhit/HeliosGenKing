@@ -631,6 +631,18 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
 
     // Use fresh store state so any newly extracted frames are included
     const upstream = resolveInputs(id, useWorkflowStore.getState().nodes as Node<NodeData>[], edges);
+    if (upstream.imageUrls.length > caps.maxImages) {
+      setErrorHandles(new Set(["image"]));
+      setTimeout(() => setErrorHandles(new Set()), 1400);
+      updateNodeData(id, { hasError: true });
+      addToast(
+        locale === "zh-CN"
+          ? `该模型最多支持 ${caps.maxImages} 张参考图，请移除多余连接后重试。`
+          : `This model supports up to ${caps.maxImages} reference images. Remove extra connections and try again.`,
+        "error",
+      );
+      return;
+    }
     const { resolvedPrompt, orderedUrls } = resolveMentions(
       upstream.prompt ?? "",
       upstream.imageNodeLabels,

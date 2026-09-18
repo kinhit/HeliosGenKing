@@ -194,7 +194,11 @@ The integration supports Mystic, Google Nano Banana 2, Google Nano Banana Pro,
 GPT Image 2, GPT Image 2.5, LTX Video 2.0 Pro, Kling 2.6 Pro, and Seedance 2.5 /
 2.0 / Fast / Mini. Local reference media is uploaded to Magnific's temporary
 asset service before reference-based generation. Generated results are
-downloaded back into the local HeliosGen media library.
+downloaded back into the local HeliosGen media library. Magnific reference
+uploads accept PNG, JPEG, WebP, MP4, WebM, MOV, MP3, WAV, M4A, and OGG files;
+unsupported formats are stopped with a clear message before a generation is
+submitted. Magnific Seedance supports up to nine reference images, or a start
+and optional end frame — these two input modes cannot be combined.
 
 ### Versioning
 
@@ -203,7 +207,7 @@ Every release must use a new semantic version. The version bump helper keeps
 `src-tauri/Cargo.lock` synchronized:
 
 ```bash
-pnpm version:patch   # bug fix: 1.3.0 → 1.3.1
+pnpm version:patch   # bug fix: 1.3.1 → 1.3.2
 pnpm version:minor   # feature: 1.3.0 → 1.4.0
 pnpm version:major   # breaking change: 1.3.0 → 2.0.0
 pnpm version:bump 1.4.0  # explicit version

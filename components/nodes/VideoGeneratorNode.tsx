@@ -537,8 +537,12 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
     if (connectedHandles.has("resource")) activeHandles.delete("startFrame");
   }
 
-  // Seedance / MiniMax H3: first/last frames and multimodal references are mutually exclusive scenarios
-  if (cfg.id === "seedance-2-fast" || cfg.id === "minimax-h3") {
+  // Seedance / MiniMax H3: first/last frames and multimodal references are mutually exclusive scenarios.
+  // Magnific's Seedance endpoints use the same contract.
+  const framesAndReferencesExclusive = cfg.id === "seedance-2-fast"
+    || cfg.id === "minimax-h3"
+    || (cfg.backend === "magnific" && Boolean(cfg.apiInput.referenceImagesKey));
+  if (framesAndReferencesExclusive) {
     const hasFrame = connectedHandles.has("startFrame") || connectedHandles.has("endFrame");
     const hasRef = connectedHandles.has("resource") || connectedHandles.has("referenceVideo") || connectedHandles.has("audioRef");
     if (hasFrame) {
@@ -788,6 +792,18 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
     const maxRes = cfg.maxResources ?? 3;
     const maxRefVideos = cfg.maxReferenceVideos ?? 3;
     const maxRefAudios = cfg.maxReferenceAudios ?? 3;
+    if (upstream.resources.length > maxRes) {
+      setErrorHandles(new Set(["resource"]));
+      setTimeout(() => setErrorHandles(new Set()), 1400);
+      updateNodeData(id, { hasError: true });
+      addToast(
+        locale === "zh-CN"
+          ? `该模型最多支持 ${maxRes} 张参考图，请移除多余连接后重试。`
+          : `This model supports up to ${maxRes} reference images. Remove extra connections and try again.`,
+        "error",
+      );
+      return;
+    }
     const limitedResources = upstream.resources.slice(0, maxRes);
     const { resolvedPrompt, orderedUrls } = resolveMentions(
       upstream.prompt ?? prompt,

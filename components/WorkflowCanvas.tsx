@@ -19,13 +19,16 @@ import "@xyflow/react/dist/style.css";
 
 import { useWorkflowStore, NodeData } from "@/lib/store";
 import { requestWorkflowSync } from "@/lib/workflowSyncBus";
-import { VIDEO_MODELS } from "@/lib/modelConfig";
+import { IMAGE_MODELS, VIDEO_MODELS } from "@/lib/modelConfig";
+import { getModelProvider } from "@/lib/providers";
+import { localizeGenerationError } from "@/lib/generationErrors";
 import CuttableEdge from "@/components/edges/CuttableEdge";
 import { topoSort, resolveInputs } from "@/lib/executor";
 import { NODE_SIZE, FALLBACK_SIZE, getLastNodeSettings, getDefaultNodeSize } from "@/lib/nodeTypes";
 import { edgeStyle } from "@/lib/edgeStyles";
 import { sha256Hex } from "@/lib/assetHash";
 import { detectTextMode } from "@/lib/textFormat";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { motion } from "motion/react";
 import TypewriterHeading from "@/components/ui/TypewriterHeading";
@@ -172,6 +175,7 @@ function nodeAcceptsPromptInput(node: Node<NodeData>, edges: Edge[]): boolean {
 }
 
 export default function WorkflowCanvas() {
+  const { locale } = useLanguage();
   const {
     nodes, edges,
     onNodesChange: _onNodesChange, onEdgesChange, onConnect,
@@ -1198,9 +1202,40 @@ export default function WorkflowCanvas() {
         const upstream = resolveInputs(nodeId, useWorkflowStore.getState().nodes as Node<NodeData>[], edges);
         const prompt = upstream.prompt;
         const imageUrls = upstream.imageUrls;
+        const modelId = (node.data.model as string | undefined) ?? "nano-banana-2";
+        const imageModel = IMAGE_MODELS.find((model) => model.id === modelId);
         const aspectRatio = node.data.aspectRatio ?? "1:1";
         const quality = node.data.quality ?? "1k";
-        const payload = { prompt, imageUrls, model: node.data.model, aspectRatio, quality };
+        if (!imageModel) {
+          const msg = `Unknown image model: ${modelId}`;
+          updateNodeData(nodeId, { status: "error", errorMsg: msg });
+          push(`[${node.id}] error: ${msg}`, false);
+          continue;
+        }
+        if (imageUrls.length > imageModel.maxImages) {
+          const msg = locale === "zh-CN"
+            ? `该模型最多支持 ${imageModel.maxImages} 张参考图，请移除多余连接后重试。`
+            : `This model supports up to ${imageModel.maxImages} reference images. Remove extra connections and try again.`;
+          updateNodeData(nodeId, { status: "error", errorMsg: msg });
+          push(`[${node.id}] error: ${msg}`, false);
+          continue;
+        }
+
+        const provider = getModelProvider(modelId);
+        const azureBaseUrl = (() => {
+          try { return localStorage.getItem("aiui-azure-base-url") ?? ""; }
+          catch { return ""; }
+        })();
+        const azureDeployment = (() => {
+          try { return JSON.parse(localStorage.getItem("aiui-azure-endpoints") ?? "{}")[modelId] ?? ""; }
+          catch { return ""; }
+        })();
+        const usesAzure = provider === "azure" && !!azureBaseUrl && !!azureDeployment;
+        const payload = {
+          prompt, imageUrls, model: modelId, aspectRatio, quality,
+          ...(usesAzure ? { azureBaseUrl, azureDeployment, azureQuality: quality } : {}),
+          ...(provider === "codex" ? { codexProvider: true } : {}),
+        };
 
         if (!prompt?.trim()) {
           const promptNodeId = edges.find(
@@ -1262,7 +1297,8 @@ export default function WorkflowCanvas() {
           updateNodeData(nodeId, { status: "done", imageUrl });
           push(`[${node.id}] done`);
         } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e);
+          const rawMsg = e instanceof Error ? e.message : String(e);
+          const msg = localizeGenerationError(locale, rawMsg);
           updateNodeData(nodeId, { status: "error", errorMsg: msg });
           push(`[${node.id}] error: ${msg}`, false);
         }
@@ -1385,7 +1421,7 @@ export default function WorkflowCanvas() {
 
     push("Complete");
     setIsRunning(false);
-  }, [nodes, edges, updateNodeData, setIsRunning, debugMode, push, kieKeySet, addToast]);
+  }, [nodes, edges, updateNodeData, setIsRunning, debugMode, push, kieKeySet, addToast, locale]);
 
   // ── Place a node at the viewport center (used by the empty-state picker) ────
   const addNodeAtCenter = useCallback((type: string) => {

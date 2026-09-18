@@ -13,6 +13,8 @@ import { ShieldBan } from "lucide-react";
 import { VIDEO_MODELS as VIDEO_MODEL_CFG } from "@/lib/modelConfig";
 import { useGeneratingBorderAnimation } from "@/lib/useGeneratingBorderAnimation";
 import MissingInputWarning from "./MissingInputWarning";
+import { localizeGenerationError } from "@/lib/generationErrors";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type VideoGeneratorNodeType = Node<NodeData, "videoGeneratorNode">;
 
@@ -158,6 +160,7 @@ function resolveMentions(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function VideoGeneratorNode({ id, data, selected }: NodeProps<VideoGeneratorNodeType>) {
+  const { locale } = useLanguage();
   const readOnly = useReadOnly();
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const updateNodeSize = useWorkflowStore((s) => s.updateNodeSize);
@@ -166,6 +169,7 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
   const flashEdgeError = useWorkflowStore((s) => s.flashEdgeError);
   const addToast = useWorkflowStore((s) => s.addToast);
   const kieKeySet = useWorkflowStore((s) => s.kieKeySet);
+  const magnificKeySet = useWorkflowStore((s) => s.magnificKeySet);
   const onNodesChange = useWorkflowStore((s) => s.onNodesChange);
   const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
   const addNode = useWorkflowStore((s) => s.addNode);
@@ -370,6 +374,7 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
   // ── Data ──────────────────────────────────────────────────────────────────
   const videoModelId = (data.videoModel as string) ?? "kling-3.0";
   const cfg = VIDEO_MODEL_CFG.find((m) => m.id === videoModelId) ?? VIDEO_MODEL_CFG[0];
+  const providerKeyMissing = cfg.backend === "magnific" ? magnificKeySet === false : kieKeySet === false;
 
   const mode = (data.klingMode as string) ?? cfg.defaultMode ?? "";
   const resolution = (data.grokResolution as string) ?? cfg.defaultResolution ?? "";
@@ -494,7 +499,7 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
         gens[slot] = json.videoUrl;
         updateNodeData(id, { status: "done", videoUrl: json.videoUrl, taskId: undefined, generations: gens, currentGenIdx: slot });
       } else {
-        const errMsg = json.error ?? "Generation failed";
+        const errMsg = localizeGenerationError(locale, json.error ?? "Generation failed");
         gens[slot] = { error: errMsg };
         updateNodeData(id, { status: "error", errorMsg: errMsg, taskId: undefined, generations: gens, currentGenIdx: slot });
       }
@@ -776,6 +781,7 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
 
   // ── Generate ──────────────────────────────────────────────────────────────
   const generate = useCallback(async () => {
+    if (providerKeyMissing) return;
     const accessToken = "guest";
 
     const upstream = resolveInputs(id, nodes as Node<NodeData>[], edges);
@@ -1058,7 +1064,7 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
         // Store taskId — the polling useEffect above will wait for completion
         updateNodeData(id, { taskId: json.taskId });
       } catch (e: unknown) {
-        const errMsg = e instanceof Error ? e.message : String(e);
+        const errMsg = localizeGenerationError(locale, e instanceof Error ? e.message : String(e));
         const storeNode = useWorkflowStore.getState().nodes.find((n) => n.id === id);
         const gens = [...((storeNode?.data?.generations as GenEntry[] | undefined) ?? [])] as GenEntry[];
         const slot = (storeNode?.data?.currentGenIdx as number | undefined) ?? Math.max(0, gens.length - 1);
@@ -1069,7 +1075,7 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
       }
     }, 3000);
   }, [id, nodes, edges, prompt, sound, seed, duration, aspectRatio, videoModelId, veoMode, isVeo,
-    mode, resolution, cfg, debugMode, textEdge, updateNodeData, flashEdgeError, kieKeySet, addToast]);
+    mode, resolution, cfg, debugMode, textEdge, updateNodeData, flashEdgeError, kieKeySet, magnificKeySet, providerKeyMissing, locale, addToast]);
 
   const handleGenerateBatch = useCallback(() => {
     generate();
@@ -1990,7 +1996,7 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
               )}
 
               {/* Generate button — always right */}
-              {!readOnly && <GenerateButton onClick={handleGenerateBatch} busy={animBusy} extracting={isExtractingFrames} disabled={promptOverLimit || kieKeySet === false || busy || isExtractingFrames || hasFailedMediaInput} warningMessages={hasFailedMediaInput ? ["A connected image/video input has no valid content"] : undefined} />}
+              {!readOnly && <GenerateButton onClick={handleGenerateBatch} busy={animBusy} extracting={isExtractingFrames} disabled={promptOverLimit || providerKeyMissing || busy || isExtractingFrames || hasFailedMediaInput} warningMessages={hasFailedMediaInput ? ["A connected image/video input has no valid content"] : undefined} />}
             </div>
           );
         })()}

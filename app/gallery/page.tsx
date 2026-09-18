@@ -18,6 +18,8 @@ import DotCanvasBackground from "@/components/ui/DotCanvasBackground";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Button } from "@/components/ui/button";
 import { browserNotify, requestNotificationPermission } from "@/lib/browserNotify";
+import { localizeGenerationError } from "@/lib/generationErrors";
+import { useLanguage } from "@/components/LanguageProvider";
 
 function randomUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -575,6 +577,7 @@ function reorderAndRenumberTags(
 // ── Inner page ────────────────────────────────────────────────────────────────
 
 function GalleryInner() {
+  const { locale } = useLanguage();
   const { state, isMobile } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
@@ -712,6 +715,7 @@ function GalleryInner() {
   const debugMode        = useWorkflowStore((s) => s.debugMode);
   const addToast         = useWorkflowStore((s) => s.addToast);
   const kieKeySet        = useWorkflowStore((s) => s.kieKeySet);
+  const magnificKeySet   = useWorkflowStore((s) => s.magnificKeySet);
   const setKieKeySet     = useWorkflowStore((s) => s.setKieKeySet);
   const [sourceFilter, setSourceFilter] = useState<"generated" | "uploaded">(initialSource);
 
@@ -1058,7 +1062,7 @@ function GalleryInner() {
     if (!authLoaded) return;
     loadItems(tab, 0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoaded, kieKeySet]);
+  }, [authLoaded, kieKeySet, magnificKeySet]);
 
   useEffect(() => {
     clearSelection();
@@ -1347,6 +1351,9 @@ function GalleryInner() {
 
   // ── Image upload ──────────────────────────────────────────────────────────
 
+  const activeModel = models.find(m => m.id === modelId);
+  const isMagnificModel = activeModel?.backend === "magnific";
+  const providerKeyMissing = isMagnificModel ? magnificKeySet === false : kieKeySet === false;
   const imgModel = IMAGE_MODELS.find(m => m.id === modelId);
   const maxImgs = imgModel?.maxImages ?? 0;
   const canAddImgs = !isVideo && !!imgModel?.supportsImages && refImages.length < maxImgs;
@@ -1651,7 +1658,7 @@ function GalleryInner() {
       const text = await res.text();
       let d: { taskId?: string; error?: string } = {};
       try { d = JSON.parse(text); } catch { throw new Error(res.ok ? "Invalid server response" : `Server error ${res.status}`); }
-      if (!res.ok) throw new Error(d.error ?? `Server error ${res.status}`);
+      if (!res.ok) throw new Error(localizeGenerationError(locale, d.error ?? `Server error ${res.status}`));
       return d.taskId!;
     } else {
       const vm = VIDEO_MODELS.find(m => m.id === modelId);
@@ -1756,7 +1763,7 @@ function GalleryInner() {
       const text = await res.text();
       let d: { taskId?: string; error?: string } = {};
       try { d = JSON.parse(text); } catch { throw new Error(res.ok ? "Invalid server response" : `Server error ${res.status}`); }
-      if (!res.ok) throw new Error(d.error ?? `Server error ${res.status}`);
+      if (!res.ok) throw new Error(localizeGenerationError(locale, d.error ?? `Server error ${res.status}`));
       return d.taskId!;
     }
   };
@@ -1778,13 +1785,13 @@ function GalleryInner() {
       const poll = await fetch(`/api/job-status?taskId=${taskId}`);
       const result = await poll.json() as { status: string; error?: string };
       if (result.status === "done") return;
-      if (result.status === "error") throw new Error(result.error ?? "Generation failed");
+      if (result.status === "error") throw new Error(localizeGenerationError(locale, result.error ?? "Generation failed"));
     }
     throw new Error("Timed out");
   };
 
   const generate = async () => {
-    if (kieKeySet === false) return;
+    if (providerKeyMissing) return;
     if (!prompt.trim() && !isVideo) return;
     requestNotificationPermission();
     if (refImages.some(r => r.uploading)) { setGenError("Images still uploading…"); setTimeout(() => setGenError(""), 3_000); return; }
@@ -2186,7 +2193,6 @@ function GalleryInner() {
   const azureResolutionOpts: string[] = isAzureProvider ? (imgModel?.azureResolutionOptions ?? []) : [];
   const durations = vidModel?.durations ?? [];
   const vidModes = vidModel?.modes ?? [];
-  const activeModel = models.find(m => m.id === modelId);
   const hasRefImgs = refImages.length > 0;
   const allUploaded = refImages.every(r => !r.uploading);
   const vidRefHandles = (vidModel?.handles ?? []).filter(h => h !== "prompt");
@@ -2198,7 +2204,7 @@ function GalleryInner() {
   const displayVidRefAudios = getDisplayOrder(vidRefAudios, draggingId, reorderOverId);
 
   const vidRequiresPrompt = isVideo && !!(vidModel?.apiInput.promptMaxLength);
-  const canGenerate = kieKeySet === false ? false : submitting ? false : promptOverLimit ? false : (vidRequiresPrompt || !isVideo) ? prompt.trim().length > 0 : true;
+  const canGenerate = providerKeyMissing ? false : submitting ? false : promptOverLimit ? false : (vidRequiresPrompt || !isVideo) ? prompt.trim().length > 0 : true;
 
   const handleAddReference = useCallback((url: string) => {
     if (refImages.some(r => r.cdnUrl === url || r.objectUrl === url)) {

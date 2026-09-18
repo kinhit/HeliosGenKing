@@ -11,6 +11,8 @@ import { useWorkflowStore, NodeData } from "@/lib/store";
 import { resolveInputs } from "@/lib/executor";
 import { useReadOnly } from "@/lib/readOnlyContext";
 import { browserNotify, requestNotificationPermission } from "@/lib/browserNotify";
+import { localizeGenerationError } from "@/lib/generationErrors";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type GenerateNodeType = Node<NodeData, "generateNode">;
 
@@ -163,6 +165,7 @@ function resolveMentions(
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function GenerateNode({ id, data, selected }: NodeProps<GenerateNodeType>) {
+  const { locale } = useLanguage();
   const readOnly = useReadOnly();
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const updateNodeSize = useWorkflowStore((s) => s.updateNodeSize);
@@ -173,6 +176,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
   const insertEdge = useWorkflowStore((s) => s.insertEdge);
   const addToast   = useWorkflowStore((s) => s.addToast);
   const kieKeySet  = useWorkflowStore((s) => s.kieKeySet);
+  const magnificKeySet = useWorkflowStore((s) => s.magnificKeySet);
   const nodes = useWorkflowStore((s) => s.nodes);
   const edges = useWorkflowStore((s) => s.edges);
   const debugMode = useWorkflowStore((s) => s.debugMode);
@@ -375,6 +379,8 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
   const model = (data.model as string) ?? "nano-banana-2";
   const caps = MODEL_CAPS[model] ?? DEFAULT_CAPS;
   const modelInfo = MODELS.find((m) => m.id === model) ?? MODELS[0];
+  const modelConfig = IMAGE_MODELS.find((m) => m.id === model);
+  const isMagnificModel = modelConfig?.backend === "magnific";
   const quality = (data.quality as string) ?? "1k";
   const status = data.status ?? "idle";
 
@@ -391,6 +397,9 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
   }, [model]);
   const isAzureProvider = currentProvider === "azure";
   const isCodexProvider = currentProvider === "codex";
+  const providerKeyMissing = isMagnificModel
+    ? magnificKeySet === false
+    : !isCodexProvider && kieKeySet === false;
 
   const promptInfo = (() => {
     const promptEdge = edges.find((e) => e.target === id && e.targetHandle === "prompt");
@@ -522,11 +531,12 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
           const storeNode = useWorkflowStore.getState().nodes.find(n => n.id === id);
           const gens = [...((storeNode?.data?.generations as GenEntry[] | undefined) ?? [])] as GenEntry[];
           const slot = storeNode?.data?.currentGenIdx as number ?? gens.length - 1;
-          gens[slot] = { error: json.error ?? "Generation failed" };
-          updateNodeData(id, { status: "error", errorMsg: json.error, taskId: undefined, generations: gens, currentGenIdx: slot });
+          const error = localizeGenerationError(locale, json.error ?? "Generation failed");
+          gens[slot] = { error };
+          updateNodeData(id, { status: "error", errorMsg: error, taskId: undefined, generations: gens, currentGenIdx: slot });
           clearInterval(interval);
           document.removeEventListener("visibilitychange", onVisible);
-          browserNotify("Node failed", json.error ?? "Generation failed");
+          browserNotify("Node failed", error);
         } else if (json.status === "not_found") {
           const storeNode = useWorkflowStore.getState().nodes.find(n => n.id === id);
           const gens = [...((storeNode?.data?.generations as GenEntry[] | undefined) ?? [])] as GenEntry[];
@@ -566,6 +576,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
   )?.source;
 
   const generate = useCallback(async () => {
+    if (providerKeyMissing) return;
     requestNotificationPermission();
     const accessToken = "guest";
 
@@ -712,7 +723,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
         // Both Kie and Azure now return { taskId } — polling useEffect handles the rest
         updateNodeData(id, { taskId: json.taskId });
       } catch (e: unknown) {
-        const errMsg = e instanceof Error ? e.message : String(e);
+        const errMsg = localizeGenerationError(locale, e instanceof Error ? e.message : String(e));
         const storeNode = useWorkflowStore.getState().nodes.find(n => n.id === id);
         const gens = [...((storeNode?.data?.generations as GenEntry[] | undefined) ?? [])] as GenEntry[];
         const slot = storeNode?.data?.currentGenIdx as number ?? gens.length - 1;
@@ -722,7 +733,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
         setLoading(false);
       }
     }, 3000);
-  }, [id, nodes, edges, model, aspectRatio, quality, data.azureQuality, data.azureCustomWidth, data.azureCustomHeight, debugMode, connectedPromptNodeId, updateNodeData, flashEdgeError, kieKeySet, addToast]);
+  }, [id, nodes, edges, model, aspectRatio, quality, data.azureQuality, data.azureCustomWidth, data.azureCustomHeight, debugMode, connectedPromptNodeId, updateNodeData, flashEdgeError, kieKeySet, magnificKeySet, providerKeyMissing, locale, addToast]);
 
   const handleGenerateBatch = useCallback(() => {
     generate();
@@ -1432,7 +1443,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
           )}
 
           {/* Generate button — always right */}
-          {!readOnly && <GenerateButton onClick={handleGenerateBatch} busy={animBusy} disabled={promptOverLimit || (!isCodexProvider && kieKeySet === false) || busy || hasFailedImageInput} warningMessages={hasFailedImageInput ? ["The connected image input has no valid content"] : undefined} />}
+          {!readOnly && <GenerateButton onClick={handleGenerateBatch} busy={animBusy} disabled={promptOverLimit || providerKeyMissing || busy || hasFailedImageInput} warningMessages={hasFailedImageInput ? ["The connected image input has no valid content"] : undefined} />}
         </div>
       </div>
 

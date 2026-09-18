@@ -676,6 +676,7 @@ export function AppSidebar() {
 
   const setSettingsOpen   = useWorkflowStore((s) => s.setSettingsOpen);
   const setKieKeySet      = useWorkflowStore((s) => s.setKieKeySet);
+  const setMagnificKeySet = useWorkflowStore((s) => s.setMagnificKeySet);
   const setAzureKeySet    = useWorkflowStore((s) => s.setAzureKeySet);
 
   React.useEffect(() => {
@@ -683,11 +684,15 @@ export function AppSidebar() {
       .then((r) => r.json())
       .then((d) => setKieKeySet(!!d.hasToken))
       .catch(() => setKieKeySet(null));
+    fetch("/api/settings/magnific-key")
+      .then((r) => r.json())
+      .then((d) => setMagnificKeySet(!!d.hasToken))
+      .catch(() => setMagnificKeySet(null));
     fetch("/api/settings/azure-key")
       .then((r) => r.json())
       .then((d) => setAzureKeySet(!!d.hasToken))
       .catch(() => setAzureKeySet(null));
-  }, [setKieKeySet, setAzureKeySet]);
+  }, [setKieKeySet, setMagnificKeySet, setAzureKeySet]);
 
   React.useEffect(() => {
     const fetchBalance = async () => {

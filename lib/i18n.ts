@@ -39,6 +39,10 @@ export const messages: Record<Locale, Record<string, string>> = {
     "workflow.importing": "Importing…",
     "workflow.import": "Import",
     "workflow.new": "New workflow",
+    "generation.noApiKey": "No Kie.ai or Magnific API key configured — generation is disabled.",
+    "generation.kieKeyMissing": "No Kie.ai API key configured. Add it in Settings.",
+    "generation.magnificKeyMissing": "No Magnific API key configured. Add it in Settings.",
+    "generation.openSettings": "Add in Settings →",
   },
   "zh-CN": {
     "language.label": "语言",
@@ -76,6 +80,10 @@ export const messages: Record<Locale, Record<string, string>> = {
     "workflow.importing": "导入中…",
     "workflow.import": "导入",
     "workflow.new": "新建工作流",
+    "generation.noApiKey": "未配置 Kie.ai 或 Magnific API Key，无法生成。",
+    "generation.kieKeyMissing": "未配置 Kie.ai API Key，请前往设置添加。",
+    "generation.magnificKeyMissing": "未配置 Magnific API Key，请前往设置添加。",
+    "generation.openSettings": "前往设置 →",
   },
 };
 

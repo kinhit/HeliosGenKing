@@ -1429,6 +1429,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [azureKeyStatus, setAzureKeyStatus]   = useState<"unknown" | "set" | "unset">("unknown");
   const [codexStatus, setCodexStatus]         = useState<CodexStatus>({ kind: "unknown" });
   const setKieKeySet    = useWorkflowStore((s) => s.setKieKeySet);
+  const setMagnificKeySet = useWorkflowStore((s) => s.setMagnificKeySet);
   const setAzureKeySet  = useWorkflowStore((s) => s.setAzureKeySet);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -1464,8 +1465,14 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     authHeader().then((h) =>
       fetch("/api/settings/magnific-key", { headers: h })
         .then((r) => r.json())
-        .then((d) => setMagnificKeyStatus(d.hasToken ? "set" : "unset"))
-        .catch(() => setMagnificKeyStatus("unset"))
+        .then((d) => {
+          setMagnificKeyStatus(d.hasToken ? "set" : "unset");
+          setMagnificKeySet(!!d.hasToken);
+        })
+        .catch(() => {
+          setMagnificKeyStatus("unset");
+          setMagnificKeySet(false);
+        })
     );
     // Check whether the server has a working codex-imagegen + codex login
     refreshCodexStatus();
@@ -1549,12 +1556,14 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     });
     if (!res.ok) throw new Error((await res.json()).error ?? "Failed to save");
     setMagnificKeyStatus("set");
+    setMagnificKeySet(true);
   };
 
   const handleMagnificKeyDelete = async () => {
     const h = await authHeader();
     await fetch("/api/settings/magnific-key", { method: "DELETE", headers: h });
     setMagnificKeyStatus("unset");
+    setMagnificKeySet(false);
   };
 
   const handleAzureTextDeploymentChange = (v: string) => {

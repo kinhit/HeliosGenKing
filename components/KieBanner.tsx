@@ -1,11 +1,17 @@
 "use client";
 import { useWorkflowStore } from "@/lib/store";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function KieBanner() {
   const kieKeySet = useWorkflowStore((s) => s.kieKeySet);
+  const magnificKeySet = useWorkflowStore((s) => s.magnificKeySet);
   const setSettingsOpen = useWorkflowStore((s) => s.setSettingsOpen);
+  const { t } = useLanguage();
 
-  if (kieKeySet !== false) return null;
+  // This is a global banner. Only show it when neither configured provider is
+  // available; otherwise a Magnific-only setup would incorrectly be told that
+  // Kie.ai is required for every generation.
+  if (kieKeySet !== false || magnificKeySet !== false) return null;
 
   return (
     <button
@@ -35,14 +41,14 @@ export default function KieBanner() {
         <line x1="12" y1="17" x2="12.01" y2="17" />
       </svg>
       <span style={{ fontSize: "12px", color: "rgba(239,68,68,0.9)", fontWeight: 500 }}>
-        No Kie.ai API key configured — generation is disabled.
+        {t("generation.noApiKey", "No Kie.ai or Magnific API key configured — generation is disabled.")}
       </span>
       <span style={{
         fontSize: "11px", fontWeight: 600, color: "rgba(239,68,68,0.7)",
         background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)",
         borderRadius: "5px", padding: "2px 8px", marginLeft: "4px",
       }}>
-        Add in Settings →
+        {t("generation.openSettings", "Add in Settings →")}
       </span>
     </button>
   );

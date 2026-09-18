@@ -6,6 +6,10 @@
   />
 </p>
 
+简体中文版本：[README.zh-CN.md](README.zh-CN.md)
+
+> This repository is a customized development version based on [SegFault42/HeliosGen](https://github.com/SegFault42/HeliosGen). It adds Simplified Chinese and Magnific image/video providers. See [README.zh-CN.md](README.zh-CN.md) for the customization scope and upstream synchronization guide.
+
 <p align="center">
   <strong>Build AI image & video pipelines visually.</strong><br/>
   Chain prompts, models, reference images, and automations on an infinite canvas.
@@ -18,7 +22,7 @@
 **HeliosGen is a desktop app.** Grab the latest build for your OS from the
 releases page — no account, no server, no cloud setup:
 
-### 👉 **[Download from the Releases page](https://github.com/SegFault42/HeliosGen/releases)**
+### 👉 **[Download from the HeliosGenKing Releases page](https://github.com/kinhit/HeliosGenKing/releases)**
 
 | OS | File |
 | --- | --- |
@@ -267,8 +271,8 @@ Platform-specific system deps:
 ## Build
 
 ```bash
-git clone https://github.com/SegFault42/HeliosGen
-cd HeliosGen
+git clone https://github.com/kinhit/HeliosGenKing.git
+cd HeliosGenKing
 npm install
 npm run desktop:build
 ```

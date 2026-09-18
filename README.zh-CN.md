@@ -101,7 +101,7 @@ AZURE_API_KEY=
 | 操作系统 | 数据目录 |
 | --- | --- |
 | macOS | `~/Library/Application Support/cash.sdd.helios.desktop/` |
-| Windows | `%APPDATA%\\cash.sdd.helios.desktop\\` |
+| Windows | `%APPDATA%\cash.sdd.helios.desktop\` |
 | Linux | `~/.local/share/cash.sdd.helios.desktop/` |
 
 删除对应目录会清空本地生成记录、设置、工作流和媒体文件，请先备份需要保留的内容。

@@ -1,0 +1,49 @@
+name: release-macos
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-aarch64:
+    name: Build macOS Apple Silicon DMG
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check release version
+        run: pnpm version:check "${GITHUB_REF_NAME}"
+
+      - name: Build desktop application
+        run: pnpm desktop:build
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: HeliosGenKing ${{ github.ref_name }}
+          generate_release_notes: true
+          files: src-tauri/target/release/bundle/dmg/*.dmg

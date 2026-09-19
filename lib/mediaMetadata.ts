@@ -20,13 +20,22 @@ export async function stripMetadata(buffer: Buffer, contentType: string): Promis
     const outputPath = join(tmpDir, `output.${extension}`);
     try {
       await writeFile(inputPath, buffer);
-      await execFileAsync(getFfmpegPath(), [
-        "-i", inputPath,
-        "-map_metadata", "-1",
-        "-c", "copy",
-        "-y", outputPath,
-      ]);
-      return await readFile(outputPath);
+      try {
+        await execFileAsync(getFfmpegPath(), [
+          "-i", inputPath,
+          "-map_metadata", "-1",
+          "-c", "copy",
+          "-y", outputPath,
+        ]);
+        return await readFile(outputPath);
+      } catch (error) {
+        // Metadata stripping is best-effort. A generated video is still valid
+        // without this cleanup step, so never turn a completed provider task
+        // into a failed generation just because ffmpeg is unavailable or a
+        // particular container rejects stream-copying.
+        console.warn("[media] video metadata cleanup skipped:", error instanceof Error ? error.message : error);
+        return buffer;
+      }
     } finally {
       await Promise.all([
         unlink(inputPath).catch(() => {}),

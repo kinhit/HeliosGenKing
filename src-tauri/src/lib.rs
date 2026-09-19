@@ -128,6 +128,13 @@ fn start_server(app: &AppHandle, port: u16) -> Result<(), Box<dyn std::error::Er
         .expect("server.js has no parent dir")
         .to_path_buf();
 
+    // Resolve the bundled binary explicitly. Relying only on PATH or on
+    // ffmpeg-static's package resolver is fragile inside a signed app bundle.
+    let ffmpeg_bin = app
+        .path()
+        .resolve("server/node_modules/ffmpeg-static/ffmpeg", tauri::path::BaseDirectory::Resource)
+        .ok();
+
     // The Node runtime ships as a resource, not the sidecar — a binary launched
     // from Contents/MacOS/ gets its own macOS Dock tile (tauri-apps/tauri#14014).
     // The `helios-node` sidecar is a shim that hides itself from the Dock and
@@ -158,6 +165,10 @@ fn start_server(app: &AppHandle, port: u16) -> Result<(), Box<dyn std::error::Er
         .env("NODE_ENV", "production")
         .env("HELIOS_DATA_DIR", data_dir.to_string_lossy().to_string())
         .env("HELIOS_MEDIA_DIR", media_dir.to_string_lossy().to_string());
+
+    if let Some(path) = ffmpeg_bin {
+        cmd = cmd.env("HELIOS_FFMPEG_PATH", path.to_string_lossy().to_string());
+    }
 
     // codex-imagegen is spawned from inside the Next.js server with the
     // sidecar's env, so a .zshrc override like CODEX_IMAGEGEN_MODEL has to be

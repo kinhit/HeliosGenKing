@@ -155,6 +155,15 @@ writeFileSync(
 );
 run("npm", ["install", "--omit=dev", "--no-audit", "--no-fund", "--no-package-lock"], {}, STAGE);
 
+// The server uses ffmpeg for reference-frame extraction, trimming, and
+// optional metadata cleanup. Fail the desktop build if the binary is not in
+// the staged production tree instead of producing an app that fails at runtime.
+const stagedFfmpeg = join(STAGE, "node_modules", "ffmpeg-static", "ffmpeg");
+if (!existsSync(stagedFfmpeg)) {
+  throw new Error(`staged install is missing ffmpeg-static binary: ${stagedFfmpeg}`);
+}
+if (process.platform !== "win32") chmodSync(stagedFfmpeg, 0o755);
+
 // Sanity check: the standalone server's own entry deps must be intact.
 for (const probe of ["next/package.json", "@next/env/package.json", "react/package.json"]) {
   if (!existsSync(join(STAGE, "node_modules", ...probe.split("/")))) {

@@ -15,6 +15,70 @@
 
 [![English](https://img.shields.io/badge/README-English-blue)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-red)](README.zh-CN.md)
 
+---
+
+## 下载
+
+HeliosGenKing 是桌面应用。请从 [Releases 发布页](https://github.com/kinhit/HeliosGenKing/releases) 下载适合你系统的最新版本，不需要注册账号、部署服务器或配置云端环境。
+
+| 系统 | 文件 |
+| --- | --- |
+| **macOS（Apple Silicon）** | `HeliosGen_<version>_aarch64.dmg` |
+| **Windows** | 暂未提供官方构建，欢迎贡献 Windows 构建产物 |
+| **Linux** | 暂未提供官方构建，欢迎贡献 Linux 构建产物 |
+
+目前 Releases 只包含已经上传的构建产物。macOS Apple Silicon 版本由 GitHub Actions 自动打包发布。Tauri 不能跨平台编译，因此 Windows 和 Linux 版本需要在对应系统上构建；如果你能在目标系统运行 `pnpm desktop:build`，欢迎提交 PR 或在 Issue 中附上构建产物。
+
+当前应用尚未进行代码签名：
+
+- **macOS**：首次运行时右键应用并选择“打开”；也可以执行 `xattr -cr /Applications/HeliosGen.app`。
+- **Windows**：SmartScreen 提示时选择“更多信息 → 仍要运行”。
+
+## 第一次运行
+
+1. 启动 HeliosGen。
+2. 打开 **设置 → API 密钥**，填写你的 [Kie.ai](https://kie.ai?ref=25abb3f2236cbff9780ab9c2f84479ec) 或 [Magnific](https://www.magnific.com/cn/api) API Key。
+3. 如果需要中文界面，在设置中选择“简体中文”。
+4. 开始生成图片、视频或工作流。
+
+应用默认以本地模式运行。生成记录、上传素材、文件夹、工作流和设置保存在本机数据库，媒体文件保存在本机目录：
+
+| 系统 | 数据目录 |
+| --- | --- |
+| macOS | `~/Library/Application Support/cash.sdd.helios.desktop/` |
+| Windows | `%APPDATA%\\cash.sdd.helios.desktop\\` |
+| Linux | `~/.local/share/cash.sdd.helios.desktop/` |
+
+删除对应目录会重置应用，请先备份需要保留的数据。
+
+---
+
+## 截图
+
+### 图片与视频生成
+
+<p align="center">
+  <img width="2912" height="2292" alt="图片生成示例" src="https://github.com/user-attachments/assets/8263b83d-addb-4af8-99d1-d8406c52be2c" />
+</p>
+
+### 工作流生成
+
+<p align="center">
+  <img width="1459" height="1146" alt="工作流生成示例" src="https://github.com/user-attachments/assets/fc7f1109-76d1-4af0-b91d-0e915bcf5461" />
+</p>
+
+### 原生 JSON 提示词预览
+
+<p align="center">
+  <img width="886" alt="JSON 提示词预览" src="https://github.com/user-attachments/assets/dedbdf4f-9d52-4e29-ad6e-a2e67e341a73" />
+</p>
+
+### AI 提示词优化助手
+
+<p align="center">
+  <img width="872" height="502" alt="提示词助手界面" src="https://github.com/user-attachments/assets/17ba972c-bd8a-49a7-b367-4ef906fe3e17" />
+</p>
+
 ## 本版本的定制内容
 
 HeliosGenKing 在保留原有工作流画布、图片/视频生成、素材库和 Tauri 桌面端的基础上，增加了：
@@ -76,6 +140,39 @@ ZHIPU_API_KEY=
 
 不要把真实 API Key 提交到 Git。应用默认把生成记录、设置和媒体保存在本机；Magnific 图生视频的临时 `asset_url` 不会长期写入本地数据库。
 
+## 项目简介
+
+HeliosGenKing 是一个免费、开源的可视化 AI 图片与视频工作流构建器。
+
+你可以使用它创建可复用的 AI 流程：
+
+- 无限画布节点工作流；
+- 多模型图片和视频生成；
+- 参考图片、参考视频和参考音频；
+- 并行或串行的自动化生成链；
+- 所有本地应用数据保存在自己的设备上。
+
+应用不收取订阅费，不会清空未使用积分，也不会把你的工作流锁定在某个界面中。你只需要准备自己的模型服务商 API Key。
+
+## 积分与服务商
+
+HeliosGenKing 支持 [Kie.ai](https://kie.ai?ref=25abb3f2236cbff9780ab9c2f84479ec) 服务。Kie.ai 积分直接购买并归属于你自己的账号，按实际生成量使用，不会因为订阅周期结束而清空。Magnific 模型则使用你自己的 Magnific API Key，具体计费和额度以服务商页面为准。
+
+## 功能
+
+- 无限节点画布；
+- AI 图片和视频生成；
+- 拖拽连接式工作流；
+- 多模型组合流程；
+- 参考图片、参考视频和参考音频；
+- 并行和串行工作流执行；
+- 实时生成历史记录；
+- 本地优先，应用数据默认不离开本机；
+- 自带 API Key；
+- 现代化响应式界面；
+- English / 简体中文界面切换；
+- macOS Apple Silicon DMG 自动发布。
+
 ## 支持的模型
 
 ### 图片
@@ -107,6 +204,26 @@ Magnific 的 Seedance 2.5 最多支持 30 张参考图、10 个参考视频和 1
 
 GLM-5.3-Flash 的 API Key 可在 **设置 → API 密钥 → Zhipu AI** 中配置；它使用智谱 BigModel 官方的 OpenAI 兼容接口。
 
+## 技术栈
+
+| 层级 | 技术 |
+| --- | --- |
+| 桌面外壳 | Tauri 2（Rust） |
+| 应用界面 | Next.js + React + TypeScript（内置 Node sidecar） |
+| 数据库 | 本地 SQLite |
+| 文件存储 | 本地磁盘 |
+| AI 后端 | Kie.ai 和 Magnific |
+
+## 语言设置
+
+应用包含 English 和简体中文。打开设置窗口选择语言后，偏好会保存在本地，下一次启动会继续使用该语言。
+
+## Magnific 接口说明
+
+参考素材在提交生成前会上传到 Magnific 的临时素材服务，生成结果下载后再保存到 HeliosGen 本地媒体库。Magnific Seedance 2.5 最多支持 30 张参考图、10 个参考视频和 10 个参考音频；Seedance 2.0、2.0 Fast、2.0 Mini 最多支持 9 张参考图、3 个参考视频和 3 个参考音频。参考图/视频与首尾帧模式不能同时使用；音频是否可以与首尾帧组合，会根据具体模型规则校验。
+
+Magnific 支持的参考素材格式包括 PNG、JPEG、WebP、MP4、WebM、MOV、MP3、WAV、M4A 和 OGG。GPT Image 2 和 GPT Image 2.5 连接参考图时使用对应的编辑接口。Magnific Mystic、LTX 2.0 Pro 和 Kling 2.6 Pro 已移除，因为当前 Magnific API 能力不能与工作流功能完整对齐。
+
 ## 版本号管理
 
 每次发布前都必须递增版本号。项目提供自动同步脚本，会同时更新
@@ -114,15 +231,98 @@ GLM-5.3-Flash 的 API Key 可在 **设置 → API 密钥 → Zhipu AI** 中配�
 `src-tauri/Cargo.lock`：
 
 ```bash
-pnpm version:patch       # 修复版本，例如 1.3.1 → 1.3.2
-pnpm version:minor       # 功能版本，例如 1.3.0 → 1.4.0
-pnpm version:major       # 重大版本，例如 1.3.0 → 2.0.0
-pnpm version:bump 1.4.0  # 直接指定版本号
+pnpm version:patch       # 修复版本，例如 1.5.0 → 1.5.1
+pnpm version:minor       # 功能版本，例如 1.5.0 → 1.6.0
+pnpm version:major       # 重大版本，例如 1.5.0 → 2.0.0
+pnpm version:bump 1.6.0  # 直接指定版本号
 pnpm version:check       # 检查所有文件是否一致
 ```
 
-脚本不会自动创建或推送 Git 标签。确认改动后，再创建类似 `v1.4.0` 的发布标签；
+脚本不会自动创建或推送 Git 标签。确认改动后，再创建类似 `v1.5.1` 的发布标签；
 GitHub Actions 会自动检查标签版本和桌面安装包版本是否一致。
+
+发布前请在 `CHANGELOG.md` 中增加对应版本的详细条目。发布工作流会自动读取该条目、版本范围内的提交记录和文件变更摘要，生成 Releases 页面的完整更新说明，并附上可点击的 Full Changelog 对比链接。
+
+## Codex CLI（可选的 GPT Image 2 后端）
+
+除了使用 Kie.ai 积分，HeliosGenKing 也可以通过自己的 ChatGPT Codex 订阅，使用 [`codex-imagegen-cli`](https://github.com/jdmnk/codex-imagegen-cli) 生成 GPT Image 2。桌面应用会自动从 `PATH` 查找 `codex-imagegen`；如果没有安装，该功能会显示“未配置”，其他功能不受影响。
+
+需要：
+
+- 有 Codex 权限的 ChatGPT Plus、Pro、Team 或 Enterprise 账号；
+- 已安装 [`codex`](https://github.com/openai/codex) CLI；
+- 已安装 [`uv`](https://docs.astral.sh/uv/) Python 包管理器。
+
+### 安装 Codex CLI
+
+```bash
+# macOS
+brew install codex
+
+# 或者跨平台安装
+npm install -g @openai/codex
+```
+
+### 安装 codex-imagegen-cli
+
+```bash
+git clone https://github.com/jdmnk/codex-imagegen-cli.git
+cd codex-imagegen-cli
+uv sync --dev
+uv tool install -e .
+```
+
+这会安装 `codex-imagegen` 命令，请确认它位于你的 `PATH` 中。然后可以在终端运行 `codex login`，或打开应用的 **设置 → API 密钥 → Codex CLI → Connect Codex**，按设备码流程完成登录。
+
+> ⚠️ 开始新的登录会立即使本机已有会话失效，无论这次登录是否完成。只有当状态显示“未配置”时，才应开始新的登录流程。
+
+打开 **设置 → 图片模型**，将 GPT Image 2 的服务商切换为 **Codex CLI**。当 CLI 已安装并完成登录后，状态会显示“就绪”。
+
+## 从源码构建
+
+Tauri 不能跨平台编译：macOS 目标请在 macOS 构建，Windows 目标请在 Windows 构建，Linux 目标请在 Linux 构建。
+
+### 环境要求
+
+| 工具 | 说明 |
+| --- | --- |
+| **Node.js 22+** | 内置服务使用 `node:sqlite`，建议使用 `nvm use 22`。 |
+| **Rust** | 参考 Tauri 2 安装方式。 |
+| **Tauri 系统依赖** | 参考 <https://v2.tauri.app/start/prerequisites/>。 |
+
+macOS 需要 Xcode Command Line Tools（`xcode-select --install`）；Windows 需要 Microsoft C++ Build Tools 和 WebView2；Linux 需要 `webkit2gtk-4.1`、`librsvg2`、`build-essential`、`curl`、`wget`、`file`、`libssl-dev`、`libayatana-appindicator3-dev` 等依赖。
+
+### 构建命令
+
+```bash
+git clone https://github.com/kinhit/HeliosGenKing.git
+cd HeliosGenKing
+corepack enable
+pnpm install
+pnpm desktop:build
+```
+
+构建产物位于 `src-tauri/target/release/bundle/`：
+
+| 系统 | 产物 |
+| --- | --- |
+| macOS | `macos/HeliosGen.app`、`dmg/HeliosGen_<ver>_<arch>.dmg` |
+| Windows | `msi/HeliosGen_<ver>_x64_en-US.msi`、`nsis/HeliosGen_<ver>_x64-setup.exe` |
+| Linux | `deb/`、`rpm/`、`appimage/HeliosGen_<ver>_amd64.AppImage` |
+
+macOS 构建默认未签名。首次启动时如果被 Gatekeeper 拦截，可以右键选择“打开”，或者执行：
+
+```bash
+xattr -cr "src-tauri/target/release/bundle/macos/HeliosGen.app"
+```
+
+### 开发模式与快速测试
+
+```bash
+pnpm desktop:dev
+```
+
+该命令会同时运行 `next dev` 和 `tauri dev`，支持热更新。日常修复建议优先使用开发模式测试，不必每次都重新打包 DMG；验证通过后再递增版本、构建并推送版本标签。
 
 ## 本地数据位置
 
@@ -224,6 +424,10 @@ pnpm build
 | `lib/i18n.ts` | English / 简体中文文案 |
 | `lib/guest/` | SQLite、本地设置和媒体索引 |
 | `src-tauri/` | Tauri 桌面端外壳 |
+
+## 参与贡献
+
+欢迎提交 Issue、Pull Request 或反馈。如果你能提供 Windows / Linux 构建产物，或者发现视频模型接口与服务商文档不一致，也欢迎附上复现步骤、模型名称和错误信息。
 
 ## 开源协议
 

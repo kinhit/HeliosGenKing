@@ -19,7 +19,11 @@ const nextConfig: NextConfig = {
   // `sharp` is a native module; the file tracer misses its platform binaries
   // unless we point at them explicitly for the standalone bundle.
   outputFileTracingIncludes: {
-    "/**": ["node_modules/sharp/**/*", "node_modules/@img/**/*"],
+    "/**": [
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*",
+      "node_modules/ffmpeg-static/**/*",
+    ],
   },
   // Never trace the Tauri desktop staging area into the standalone output.
   outputFileTracingExcludes: {

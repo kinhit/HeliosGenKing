@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.1 - 2026-09-19
+
+- Fixed completed video generations being marked as failed when optional local ffmpeg metadata cleanup was unavailable.
+- Explicitly passed the bundled ffmpeg binary path from the macOS Tauri shell and verified it during desktop staging.
+- Kept video generation results usable when a specific container cannot be processed with stream-copy metadata cleanup.
+- Reworked the chat model picker into a viewport-aware, scrollable portal so all models remain selectable inside the app window.
+- Completed the Simplified Chinese README with download, setup, build, Codex CLI, contribution, and upstream-sync documentation.
+- Replaced generic GitHub-generated release notes with automatic Full Changelog notes containing curated changes, commits, file statistics, and a comparison link.
+
 ## 1.5.0 - 2026-09-19
 
 - Bundled arm64 ffmpeg for desktop video frame extraction, trimming, and metadata processing.

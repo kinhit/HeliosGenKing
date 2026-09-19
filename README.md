@@ -228,6 +228,11 @@ The helper does not create or push Git tags automatically. After reviewing the
 generated changes, create a release tag such as `v1.4.0`; GitHub Actions checks
 that the tag and all bundled version files match.
 
+Release notes are generated automatically from `CHANGELOG.md`, the commits in
+the release range, and a file-change summary. Add a clear entry under the new
+version before tagging; the workflow publishes it as the release body and adds
+a clickable Full Changelog comparison link.
+
 ## 🤖 Codex CLI (optional — alternate GPT Image 2 backend)
 
 Instead of routing GPT Image 2 through kie.ai credits, HeliosGen can generate through your own ChatGPT Codex subscription via [`codex-imagegen-cli`](https://github.com/jdmnk/codex-imagegen-cli). The desktop app picks up `codex` from your `PATH` automatically; if it's missing, the feature just shows **NOT CONFIGURED** and everything else keeps working.

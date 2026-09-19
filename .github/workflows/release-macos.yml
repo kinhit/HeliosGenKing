@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -41,9 +43,13 @@ jobs:
       - name: Build desktop application
         run: pnpm desktop:build
 
+      - name: Generate release notes
+        run: node scripts/release-notes.mjs "${GITHUB_REF_NAME}" > release-notes.md
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: HeliosGenKing ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: release-notes.md
+          generate_release_notes: false
           files: src-tauri/target/release/bundle/dmg/*.dmg

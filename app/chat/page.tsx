@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { flushSync } from "react-dom";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
+import { createPortal, flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useChatSessionStore, type StoredMessage, type ChatSession } from "@/lib/chatSessionStore";
 import { getToken } from "@/lib/galleryUtils";
@@ -33,24 +33,78 @@ function ModelPicker({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    left: number;
+    top?: number;
+    bottom?: number;
+    maxHeight: number;
+  } | null>(null);
+  const [placement, setPlacement] = useState<"up" | "down">(direction);
 
   useEffect(() => {
     function onPointer(e: PointerEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!ref.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
     }
     window.addEventListener("pointerdown", onPointer);
     return () => window.removeEventListener("pointerdown", onPointer);
   }, []);
 
-  const current = MODELS.find(m => m.id === model);
-  const dropPos = direction === "up"
-    ? { bottom: "calc(100% + 6px)" }
-    : { top: "calc(100% + 6px)" };
+  // Render the menu in document.body so workflow/chat containers with
+  // `overflow: hidden` cannot clip it outside the window. The menu itself is
+  // constrained to the available viewport space and remains scrollable.
+  useLayoutEffect(() => {
+    if (!open) {
+      return;
+    }
 
+    const updatePosition = () => {
+      const button = buttonRef.current;
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      const gutter = 8;
+      const roomAbove = rect.top - gutter;
+      const roomBelow = window.innerHeight - rect.bottom - gutter;
+      const shouldOpenUp = direction === "up"
+        ? roomAbove >= 160 || roomAbove > roomBelow
+        : roomBelow < 220 && roomAbove > roomBelow;
+      const nextPlacement = shouldOpenUp ? "up" : "down";
+      const available = Math.max(120, Math.min(420, shouldOpenUp ? roomAbove : roomBelow));
+      const menuWidth = Math.min(320, window.innerWidth - gutter * 2);
+      const left = Math.max(gutter, Math.min(
+        rect.right - menuWidth,
+        window.innerWidth - menuWidth - gutter,
+      ));
+      setPlacement(nextPlacement);
+      setMenuPosition({
+        left,
+        maxHeight: available,
+        ...(nextPlacement === "up"
+          ? { bottom: window.innerHeight - rect.top + 6 }
+          : { top: rect.bottom + 6 }),
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [direction, open]);
+
+  const current = MODELS.find(m => m.id === model);
   return (
     <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={buttonRef}
+        onClick={() => setOpen(o => {
+          if (o) setMenuPosition(null);
+          return !o;
+        })}
         style={{
           display: "flex", alignItems: "center", gap: "5px",
           padding: "0 8px", height: "32px", borderRadius: "8px",
@@ -66,19 +120,22 @@ function ModelPicker({
           size={12}
           style={{
             opacity: 0.5,
-            transform: direction === "up"
+            transform: placement === "up"
               ? (open ? "rotate(180deg)" : "none")
               : (open ? "none" : "rotate(180deg)"),
             transition: "transform 120ms",
           }}
         />
       </button>
-      {open && (
-        <div style={{
-          position: "absolute", right: 0, ...dropPos,
-          minWidth: "180px", background: "rgba(14,16,18,0.98)",
+      {open && menuPosition && createPortal(
+        <div ref={menuRef} style={{
+          position: "fixed", left: menuPosition.left,
+          ...(menuPosition.top !== undefined ? { top: menuPosition.top } : { bottom: menuPosition.bottom }),
+          width: "min(320px, calc(100vw - 16px))",
+          background: "rgba(14,16,18,0.98)",
           border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.6)", overflowY: "auto", maxHeight: "min(60vh, 420px)", overscrollBehavior: "contain", zIndex: 100,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)", overflowY: "auto", maxHeight: menuPosition.maxHeight,
+          overscrollBehavior: "contain", zIndex: 10000,
         }}>
           <div style={{ padding: "4px" }}>
             {MODEL_GROUPS.map((group, gi) => (
@@ -118,6 +175,7 @@ function ModelPicker({
             ))}
           </div>
         </div>
+        , document.body,
       )}
     </div>
   );
@@ -625,12 +683,13 @@ function ChatInner() {
   const [landingModel, setLandingModel] = useState<ModelId>("claude-sonnet-4-6");
   const [pendingMessage, setPendingMessage] = useState("");
 
-  // Sync landingModel from store once hydrated
-  useEffect(() => { if (hydrated) setLandingModel(preferredModel as ModelId); }, [hydrated]);
-
   useEffect(() => {
-    const unsub = useChatSessionStore.persist?.onFinishHydration(() => setHydrated(true));
-    if (useChatSessionStore.persist?.hasHydrated()) setHydrated(true);
+    const finishHydration = () => {
+      setHydrated(true);
+      setLandingModel(useChatSessionStore.getState().preferredModel as ModelId);
+    };
+    const unsub = useChatSessionStore.persist?.onFinishHydration(finishHydration);
+    if (useChatSessionStore.persist?.hasHydrated()) queueMicrotask(finishHydration);
     return unsub;
   }, []);
 

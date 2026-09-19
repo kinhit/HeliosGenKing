@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useChatSessionStore, type StoredMessage, type ChatSession } from "@/lib/chatSessionStore";
 import { getToken } from "@/lib/galleryUtils";
-import { MODEL_GROUPS, MODELS, type ModelId } from "@/lib/models";
+import { MODEL_GROUPS, MODELS, textModelCredential, type ModelId } from "@/lib/models";
 import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
 import { Send, ChevronUp, Copy, Check } from "lucide-react";
 import { motion } from "motion/react";
@@ -93,7 +93,7 @@ function ModelPicker({
                     <button
                       key={m.id}
                       onClick={() => { if (!disabled) { onChange(m.id); setOpen(false); } }}
-                      title={disabled ? "Configure Azure in Settings → API Keys" : undefined}
+                      title={disabled ? "Configure this provider in Settings → API Keys" : undefined}
                       style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         width: "100%", padding: "7px 8px", borderRadius: "7px", border: "none",
@@ -109,7 +109,7 @@ function ModelPicker({
                     >
                       <span>{m.label}</span>
                       <span style={{ fontSize: "10px", color: disabled ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.28)", marginLeft: "8px" }}>
-                        {disabled ? "needs Azure key" : m.desc}
+                        {disabled ? "needs API key" : m.desc}
                       </span>
                     </button>
                   );
@@ -195,7 +195,15 @@ function LandingView({
   const animatedPlaceholder = useCyclingPlaceholder(!headingDone || input.length > 0);
   const kieKeySet   = useWorkflowStore((s) => s.kieKeySet);
   const azureKeySet = useWorkflowStore((s) => s.azureKeySet);
-  const disabledIds = azureKeySet === true ? [] : ["azure-auto"];
+  const zhipuKeySet = useWorkflowStore((s) => s.zhipuKeySet);
+  const disabledIds = [
+    ...(azureKeySet === true ? [] : ["azure-auto"]),
+    ...(zhipuKeySet === true ? [] : ["glm-5.3-flash"]),
+  ];
+  const credential = textModelCredential(model);
+  const providerKeyMissing = credential === "kie" ? kieKeySet === false
+    : credential === "azure" ? azureKeySet !== true
+    : zhipuKeySet !== true;
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -265,12 +273,12 @@ function LandingView({
             <ModelPicker model={model} onChange={onModelChange} direction="down" disabledIds={disabledIds} />
             <button
               onClick={() => submit(input)}
-              disabled={!input.trim() || kieKeySet === false || disabledIds.includes(model)}
+              disabled={!input.trim() || providerKeyMissing || disabledIds.includes(model)}
               style={{
                 width: "36px", height: "36px", borderRadius: "50%", border: "none",
-                background: input.trim() && kieKeySet !== false && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)",
-                color: input.trim() && kieKeySet !== false && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)",
-                cursor: input.trim() && kieKeySet !== false && !disabledIds.includes(model) ? "pointer" : "not-allowed",
+                background: input.trim() && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)",
+                color: input.trim() && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)",
+                cursor: input.trim() && !providerKeyMissing && !disabledIds.includes(model) ? "pointer" : "not-allowed",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, transition: "background 150ms, color 150ms",
               }}
@@ -313,7 +321,15 @@ function ChatWindow({
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const kieKeySet   = useWorkflowStore((s) => s.kieKeySet);
   const azureKeySet = useWorkflowStore((s) => s.azureKeySet);
-  const disabledIds = azureKeySet === true ? [] : ["azure-auto"];
+  const zhipuKeySet = useWorkflowStore((s) => s.zhipuKeySet);
+  const disabledIds = [
+    ...(azureKeySet === true ? [] : ["azure-auto"]),
+    ...(zhipuKeySet === true ? [] : ["glm-5.3-flash"]),
+  ];
+  const credential = textModelCredential(model);
+  const providerKeyMissing = credential === "kie" ? kieKeySet === false
+    : credential === "azure" ? azureKeySet !== true
+    : zhipuKeySet !== true;
 
   function handleModelChange(id: ModelId) { setModel(id); onModelChange?.(id); }
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -459,7 +475,7 @@ function ChatWindow({
             />
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "12px", flexShrink: 0 }}>
               <ModelPicker model={model} onChange={handleModelChange} direction="down" disabledIds={disabledIds} />
-              <button onClick={() => send(input)} disabled={!input.trim() || kieKeySet === false || disabledIds.includes(model)} style={{ width: "36px", height: "36px", borderRadius: "50%", border: "none", background: input.trim() && kieKeySet !== false && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)", color: input.trim() && kieKeySet !== false && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)", cursor: input.trim() && kieKeySet !== false && !disabledIds.includes(model) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 150ms, color 150ms" }}>
+              <button onClick={() => send(input)} disabled={!input.trim() || providerKeyMissing || disabledIds.includes(model)} style={{ width: "36px", height: "36px", borderRadius: "50%", border: "none", background: input.trim() && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)", color: input.trim() && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)", cursor: input.trim() && !providerKeyMissing && !disabledIds.includes(model) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 150ms, color 150ms" }}>
                 <Send size={15} />
               </button>
             </div>
@@ -567,12 +583,12 @@ function ChatWindow({
             <ModelPicker model={model} onChange={handleModelChange} disabledIds={disabledIds} />
             <button
               onClick={() => send(input)}
-              disabled={!input.trim() || isStreaming || kieKeySet === false || disabledIds.includes(model)}
+              disabled={!input.trim() || isStreaming || providerKeyMissing || disabledIds.includes(model)}
               style={{
                 width: "32px", height: "32px", borderRadius: "8px", border: "none",
-                background: input.trim() && !isStreaming && kieKeySet !== false && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)",
-                color: input.trim() && !isStreaming && kieKeySet !== false && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)",
-                cursor: input.trim() && !isStreaming && kieKeySet !== false && !disabledIds.includes(model) ? "pointer" : "not-allowed",
+                background: input.trim() && !isStreaming && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)",
+                color: input.trim() && !isStreaming && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)",
+                cursor: input.trim() && !isStreaming && !providerKeyMissing && !disabledIds.includes(model) ? "pointer" : "not-allowed",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, transition: "background 150ms, color 150ms",
               }}

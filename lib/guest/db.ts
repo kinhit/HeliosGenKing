@@ -269,6 +269,21 @@ export function deleteMagnificApiKey(): void {
   deleteSetting("magnific_api_key");
 }
 
+export function getZhipuApiKey(): string | null {
+  const dbKey = getSetting("zhipu_api_key");
+  if (dbKey) return dbKey;
+  const envKey = process.env.ZHIPU_API_KEY ?? "";
+  return envKey || null;
+}
+
+export function setZhipuApiKey(key: string): void {
+  setSetting("zhipu_api_key", key);
+}
+
+export function deleteZhipuApiKey(): void {
+  deleteSetting("zhipu_api_key");
+}
+
 // ── Folders ────────────────────────────────────────────────────────────────
 
 function rowToFolder(r: Record<string, unknown>): FolderRecord {

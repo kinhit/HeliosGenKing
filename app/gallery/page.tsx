@@ -19,6 +19,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Button } from "@/components/ui/button";
 import { browserNotify, requestNotificationPermission } from "@/lib/browserNotify";
 import { localizeGenerationError } from "@/lib/generationErrors";
+import { ASYNC_GENERATION_TIMEOUT_MS } from "@/lib/jobTiming";
 import { useLanguage } from "@/components/LanguageProvider";
 
 function randomUUID(): string {
@@ -91,7 +92,7 @@ interface KlingElement {
 function resolveGalleryMentions(
   text: string,
   tagged: TaggedImage[],
-  tagFormat: "default" | "grok" = "default",
+  tagFormat: "default" | "grok" | "magnific" = "default",
 ): { resolvedPrompt: string; extraUrls: string[]; extraAssets: { url: string; kind: "image" | "video" | "audio" }[] } {
   if (!tagged.length) return { resolvedPrompt: text, extraUrls: [], extraAssets: [] };
   type Span = { start: number; end: number; url: string; kind: "image" | "video" | "audio" };
@@ -112,22 +113,28 @@ function resolveGalleryMentions(
   if (!spans.length) return { resolvedPrompt: text, extraUrls: [], extraAssets: [] };
   const extraUrls: string[] = [];
   const extraAssets: { url: string; kind: "image" | "video" | "audio" }[] = [];
-  const seenUrlIndex = new Map<string, number>(); // url → 1-based slot already assigned
+  const seenUrlIndex = new Map<string, number>(); // modality + url → 1-based slot already assigned
   let resolvedPrompt = "";
   let lastEnd = 0;
   let n = 1;
+  const modalityCounters = { image: 1, video: 1, audio: 1 };
   for (const span of spans) {
     resolvedPrompt += text.slice(lastEnd, span.start);
+    const mapKey = tagFormat === "magnific" ? `${span.kind}:${span.url}` : span.url;
     let slot: number;
-    if (seenUrlIndex.has(span.url)) {
-      slot = seenUrlIndex.get(span.url)!;
+    if (seenUrlIndex.has(mapKey)) {
+      slot = seenUrlIndex.get(mapKey)!;
     } else {
-      slot = n++;
-      seenUrlIndex.set(span.url, slot);
+      slot = tagFormat === "magnific" ? modalityCounters[span.kind]++ : n++;
+      seenUrlIndex.set(mapKey, slot);
       extraUrls.push(span.url);
       extraAssets.push({ url: span.url, kind: span.kind });
     }
-    resolvedPrompt += tagFormat === "grok" ? `@image${slot} ` : `<<<image ${slot}>>>`;
+    resolvedPrompt += tagFormat === "grok"
+      ? `@image${slot} `
+      : tagFormat === "magnific"
+        ? `@${span.kind === "image" ? "Image" : span.kind === "video" ? "Video" : "Audio"}${slot}`
+        : `<<<image ${slot}>>>`;
     lastEnd = span.end;
   }
   resolvedPrompt += text.slice(lastEnd);
@@ -1460,27 +1467,29 @@ function GalleryInner() {
       error: false,
     }));
 
-    const isSeedanceModel = modelId === "seedance-2" || modelId === "seedance-2-fast" || modelId === "minimax-h3";
+    const policy = vm?.referencePolicy;
     if (isSingle) {
       const [entry] = newEntries;
       if (target === "startFrame") {
         setVidStartFrame(entry);
         if (modelId === "happyhorse") setVidResources([]);
-        if (isSeedanceModel) { setVidResources([]); setVidRefVideos([]); setVidRefAudios([]); }
+        if (policy?.visualExclusiveWithFrames) { setVidResources([]); setVidRefVideos([]); }
+        if (policy?.audioExclusiveWithFrames) setVidRefAudios([]);
       } else if (target === "endFrame") {
         setVidEndFrame(entry);
-        if (isSeedanceModel) { setVidResources([]); setVidRefVideos([]); setVidRefAudios([]); }
+        if (policy?.visualExclusiveWithFrames) { setVidResources([]); setVidRefVideos([]); }
+        if (policy?.audioExclusiveWithFrames) setVidRefAudios([]);
       } else setVidVideoRef(entry);
     } else {
       if (target === "resource") {
         if (modelId === "happyhorse") setVidStartFrame(null);
-        if (isSeedanceModel) { setVidStartFrame(null); setVidEndFrame(null); }
+        if (policy?.visualExclusiveWithFrames) { setVidStartFrame(null); setVidEndFrame(null); }
         setVidResources(prev => [...prev, ...newEntries]);
       } else if (target === "referenceVideo") {
-        if (isSeedanceModel) { setVidStartFrame(null); setVidEndFrame(null); }
+        if (policy?.visualExclusiveWithFrames) { setVidStartFrame(null); setVidEndFrame(null); }
         setVidRefVideos(prev => [...prev, ...newEntries]);
       } else {
-        if (isSeedanceModel) { setVidStartFrame(null); setVidEndFrame(null); }
+        if (policy?.audioExclusiveWithFrames) { setVidStartFrame(null); setVidEndFrame(null); }
         setVidRefAudios(prev => [...prev, ...newEntries]);
       }
     }
@@ -1567,17 +1576,17 @@ function GalleryInner() {
     }
     const isDup = (slots: RefImage[]) => slots.some(r => r.cdnUrl === url || r.objectUrl === url);
 
-    const isSeedancePicker = modelId === "seedance-2" || modelId === "seedance-2-fast" || modelId === "minimax-h3";
+    const policy = VIDEO_MODELS.find(m => m.id === modelId)?.referencePolicy;
     if (target === "resource") {
       if (isDup(vidResources)) return;
       if (modelId === "happyhorse") setVidStartFrame(null);
-      if (isSeedancePicker) { setVidStartFrame(null); setVidEndFrame(null); }
+      if (policy?.visualExclusiveWithFrames) { setVidStartFrame(null); setVidEndFrame(null); }
       setVidResources(prev => [...prev, { id: randomUUID(), objectUrl: url, cdnUrl: url, uploading: false, error: false }]);
       return;
     }
     if (target === "referenceVideo") {
       if (isDup(vidRefVideos)) return;
-      if (isSeedancePicker) { setVidStartFrame(null); setVidEndFrame(null); }
+      if (policy?.visualExclusiveWithFrames) { setVidStartFrame(null); setVidEndFrame(null); }
       setVidRefVideos(prev => [...prev, { id: randomUUID(), objectUrl: url, cdnUrl: url, uploading: false, error: false }]);
       return;
     }
@@ -1585,10 +1594,12 @@ function GalleryInner() {
     if (target === "startFrame") {
       setVidStartFrame(entry);
       if (modelId === "happyhorse") setVidResources([]);
-      if (isSeedancePicker) { setVidResources([]); setVidRefVideos([]); setVidRefAudios([]); }
+      if (policy?.visualExclusiveWithFrames) { setVidResources([]); setVidRefVideos([]); }
+      if (policy?.audioExclusiveWithFrames) setVidRefAudios([]);
     } else if (target === "endFrame") {
       setVidEndFrame(entry);
-      if (isSeedancePicker) { setVidResources([]); setVidRefVideos([]); setVidRefAudios([]); }
+      if (policy?.visualExclusiveWithFrames) { setVidResources([]); setVidRefVideos([]); }
+      if (policy?.audioExclusiveWithFrames) setVidRefAudios([]);
     } else if (target === "videoRef") setVidVideoRef(entry);
   };
 
@@ -1780,7 +1791,8 @@ function GalleryInner() {
       document.addEventListener("visibilitychange", onVisible);
     });
 
-    for (let i = 0; i < 150; i++) {
+    const maxAttempts = Math.ceil(ASYNC_GENERATION_TIMEOUT_MS / 3_000);
+    for (let i = 0; i < maxAttempts; i++) {
       await waitOrVisible(3_000);
       const poll = await fetch(`/api/job-status?taskId=${taskId}`);
       const result = await poll.json() as { status: string; error?: string };
@@ -1800,6 +1812,24 @@ function GalleryInner() {
     }
     if (isVideo) {
       const vm = VIDEO_MODELS.find(m => m.id === modelId);
+      const hasFrameInput = Boolean(vidStartFrame?.cdnUrl || vidEndFrame?.cdnUrl);
+      const hasVisualReferences = vidResources.some(r => r.cdnUrl && !r.error)
+        || vidRefVideos.some(r => r.cdnUrl && !r.error);
+      const hasAudioReferences = vidRefAudios.some(r => r.cdnUrl && !r.error);
+      if (vm?.referencePolicy?.audioRequiresVisualReference && hasAudioReferences && !hasVisualReferences) {
+        addToast(locale === "zh-CN"
+          ? "该模型的参考音频必须与至少一张参考图或一段参考视频同时使用。"
+          : "Reference audio requires at least one reference image or video for this model.", "error");
+        return;
+      }
+      if (vm?.referencePolicy?.visualExclusiveWithFrames && hasFrameInput && hasVisualReferences) {
+        addToast(locale === "zh-CN" ? "该模型不能同时使用首尾帧和视觉参考素材。" : "This model cannot combine frames with visual references.", "error");
+        return;
+      }
+      if (vm?.referencePolicy?.audioExclusiveWithFrames && hasFrameInput && hasAudioReferences) {
+        addToast(locale === "zh-CN" ? "该模型不能同时使用首尾帧和参考音频。" : "This model cannot combine frames with reference audio.", "error");
+        return;
+      }
       if (vm?.requiredHandles?.length) {
         const handleHasContent = (h: string) => {
           if (h === "resource")        return vidResources.some(r => r.cdnUrl && !r.error);
@@ -2233,19 +2263,23 @@ function GalleryInner() {
     if (target === "refImage") {
       handleAddReference(url);
     } else if (target === "startFrame") {
+      const policy = VIDEO_MODELS.find(m => m.id === modelId)?.referencePolicy;
       setVidStartFrame(entry);
       if (modelId === "happyhorse") setVidResources([]);
-      if (modelId === "seedance-2" || modelId === "seedance-2-fast" || modelId === "minimax-h3") { setVidResources([]); setVidRefVideos([]); setVidRefAudios([]); }
+      if (policy?.visualExclusiveWithFrames) { setVidResources([]); setVidRefVideos([]); }
+      if (policy?.audioExclusiveWithFrames) setVidRefAudios([]);
     } else if (target === "endFrame") {
+      const policy = VIDEO_MODELS.find(m => m.id === modelId)?.referencePolicy;
       setVidEndFrame(entry);
-      if (modelId === "seedance-2" || modelId === "seedance-2-fast" || modelId === "minimax-h3") { setVidResources([]); setVidRefVideos([]); setVidRefAudios([]); }
+      if (policy?.visualExclusiveWithFrames) { setVidResources([]); setVidRefVideos([]); }
+      if (policy?.audioExclusiveWithFrames) setVidRefAudios([]);
     } else if (target === "videoRef") {
       setVidVideoRef(entry);
     } else if (target === "resource") {
-      if (modelId === "seedance-2" || modelId === "seedance-2-fast" || modelId === "minimax-h3") { setVidStartFrame(null); setVidEndFrame(null); }
+      if (VIDEO_MODELS.find(m => m.id === modelId)?.referencePolicy?.visualExclusiveWithFrames) { setVidStartFrame(null); setVidEndFrame(null); }
       setVidResources(prev => [...prev, entry]);
     } else if (target === "referenceVideo") {
-      if (modelId === "seedance-2" || modelId === "seedance-2-fast" || modelId === "minimax-h3") { setVidStartFrame(null); setVidEndFrame(null); }
+      if (VIDEO_MODELS.find(m => m.id === modelId)?.referencePolicy?.visualExclusiveWithFrames) { setVidStartFrame(null); setVidEndFrame(null); }
       setVidRefVideos(prev => [...prev, entry]);
     }
   }, [handleAddReference, modelId]);
@@ -3481,11 +3515,15 @@ function GalleryInner() {
                 }
                 if (isHappyHorse && h === "startFrame" && vidResources.length > 0) continue;
                 if (isHappyHorse && h === "resource" && vidStartFrame) continue;
-                const isSeedance = vidModel?.id === "seedance-2" || vidModel?.id === "seedance-2-fast" || vidModel?.id === "minimax-h3";
-                const seedanceHasFrame = !!(vidStartFrame || vidEndFrame);
-                const seedanceHasRef   = vidResources.length > 0 || vidRefVideos.length > 0 || vidRefAudios.length > 0;
-                if (isSeedance && seedanceHasFrame && (h === "resource" || h === "referenceVideo" || h === "audioRef")) continue;
-                if (isSeedance && seedanceHasRef   && (h === "startFrame" || h === "endFrame")) continue;
+                const policy = vidModel?.referencePolicy;
+                const hasFrame = !!(vidStartFrame || vidEndFrame);
+                const hasVisualRef = vidResources.length > 0 || vidRefVideos.length > 0;
+                const hasAudioRef = vidRefAudios.length > 0;
+                if (hasFrame && policy?.visualExclusiveWithFrames && (h === "resource" || h === "referenceVideo")) continue;
+                if (hasFrame && policy?.audioExclusiveWithFrames && h === "audioRef") continue;
+                if (((hasVisualRef && policy?.visualExclusiveWithFrames)
+                  || (hasAudioRef && policy?.audioExclusiveWithFrames))
+                  && (h === "startFrame" || h === "endFrame")) continue;
                 if (h === "startFrame") {
                   if (vidStartFrame) slots.push({ kind: "filled", target: h, mediaKind: "image", label: "Start Frame", ref: vidStartFrame });
                   else               slots.push({ kind: "add",    target: h, mediaKind: "image", label: "Start Frame", countLeft: 1 });

@@ -152,9 +152,8 @@ You only pay for what you generate.
 - Seedream 5.0 Lite / Pro (Seedream)
 - Z-Image (Z-AI)
 - Grok Imagine (X)
-- Magnific Mystic — Realism / Fluid / Flexible / Zen
 - Magnific Google Nano Banana 2 / Google Nano Banana Pro
-- Magnific GPT Image 2 / GPT Image 2.5
+- Magnific GPT Image 2 / GPT Image 2.5 Flare / GPT Image 2.5 Sunburst
 
 ## Videos
 - Veo 3.1 Lite / Fast / Quality, Gemini Omni Video (Google)
@@ -162,9 +161,10 @@ You only pay for what you generate.
 - Seedance 2.0 / Fast / Mini (Bytedance)
 - Grok Imagine, Grok Imagine 1.5 preview (X)
 - HappyHorse (Alibaba)
-- Magnific LTX Video 2.0 Pro — text-to-video / image-to-video
-- Magnific Kling 2.6 Pro — image-to-video with audio
 - Magnific Seedance 2.5 / 2.0 / 2.0 Fast / 2.0 Mini
+
+## Text
+- GLM-5.3-Flash (Zhipu AI / BigModel)
 
 More models are coming.
 
@@ -190,15 +190,25 @@ window; the choice is saved locally for the next launch.
 ## ✨ Magnific API
 
 Magnific models are available after adding a key under **Settings → API Keys**.
-The integration supports Mystic, Google Nano Banana 2, Google Nano Banana Pro,
-GPT Image 2, GPT Image 2.5, LTX Video 2.0 Pro, Kling 2.6 Pro, and Seedance 2.5 /
-2.0 / Fast / Mini. Local reference media is uploaded to Magnific's temporary
-asset service before reference-based generation. Generated results are
-downloaded back into the local HeliosGen media library. Magnific reference
-uploads accept PNG, JPEG, WebP, MP4, WebM, MOV, MP3, WAV, M4A, and OGG files;
-unsupported formats are stopped with a clear message before a generation is
-submitted. Magnific Seedance supports up to nine reference images, or a start
-and optional end frame — these two input modes cannot be combined.
+The integration supports Google Nano Banana 2, Google Nano Banana Pro, GPT Image
+2, GPT Image 2.5 Flare, GPT Image 2.5 Sunburst, and Seedance 2.5 / 2.0 /
+2.0 Fast / 2.0 Mini. The previously exposed Magnific Mystic, LTX Video 2.0 Pro,
+and Kling 2.6 Pro entries are intentionally removed because their Magnific API
+capabilities do not match the supported workflow contract.
+
+Local reference media is uploaded to Magnific's temporary asset service before
+reference-based generation. Generated results are downloaded back into the
+local HeliosGen media library. Image models support reference images according
+to their endpoint limits; GPT Image 2 and GPT Image 2.5 use the edit endpoints
+when references are attached. Seedance 2.5 supports up to 30 images, 10 videos,
+and 10 audios. Seedance 2.0, 2.0 Fast, and 2.0 Mini support up to 9 images, 3
+videos, and 3 audios. Their visual-reference and start/end-frame modes are
+mutually exclusive; audio-reference rules are enforced per model before the
+request is submitted. Uploads accept PNG, JPEG, WebP, MP4, WebM, MOV, MP3, WAV,
+M4A, and OGG files.
+
+GLM-5.3-Flash is available under **Settings → API Keys → Zhipu AI** and uses the
+official BigModel OpenAI-compatible endpoint.
 
 ### Versioning
 

@@ -7,13 +7,11 @@ import { useAnimatedPopup } from "@/lib/useAnimatedPopup";
 import CornerResizer from "./CornerResizer";
 import { useGeneratingBorderAnimation } from "@/lib/useGeneratingBorderAnimation";
 import { useReadOnly } from "@/lib/readOnlyContext";
+import { MODELS as TEXT_MODELS, textModelCredential } from "@/lib/models";
 
 type AssistantNodeType = Node<NodeData, "assistantNode">;
 
-const MODELS = [
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
-];
+const NODE_MODELS = TEXT_MODELS.filter((candidate) => candidate.id !== "azure-auto");
 
 export default function AssistantNode({ id, data, selected }: NodeProps<AssistantNodeType>) {
   const readOnly = useReadOnly();
@@ -23,6 +21,7 @@ export default function AssistantNode({ id, data, selected }: NodeProps<Assistan
   const insertEdge = useWorkflowStore((s) => s.insertEdge);
   const edges = useWorkflowStore((s) => s.edges);
   const kieKeySet = useWorkflowStore((s) => s.kieKeySet);
+  const zhipuKeySet = useWorkflowStore((s) => s.zhipuKeySet);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -48,6 +47,8 @@ export default function AssistantNode({ id, data, selected }: NodeProps<Assistan
   const outputText = (data.outputText as string) ?? "";
   const localPrompt = (data.localPrompt as string) ?? "";
   const model = (data.model as string) ?? "claude-sonnet-4-6";
+  const credential = textModelCredential(model);
+  const providerKeyMissing = credential === "zhipu" ? zhipuKeySet === false : kieKeySet === false;
 
   const [viewMode, setViewMode] = useState<"input" | "output">("input");
   const [loading, setLoading] = useState(false);
@@ -128,7 +129,7 @@ export default function AssistantNode({ id, data, selected }: NodeProps<Assistan
   }, [id, addNode, insertEdge, onNodesChange]);
 
   const handleGenerate = useCallback(async () => {
-    if (busy || !hasPrompt) return;
+    if (busy || !hasPrompt || providerKeyMissing) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -169,16 +170,12 @@ export default function AssistantNode({ id, data, selected }: NodeProps<Assistan
           if (payload === "[DONE]") break outer;
           try {
             const parsed = JSON.parse(payload);
-            // Anthropic streaming: content_block_delta with text_delta type
-            if (
-              parsed.type === "content_block_delta" &&
-              parsed.delta?.type === "text_delta"
-            ) {
-              const delta = parsed.delta.text ?? "";
-              if (delta) {
-                accumulated += delta;
-                updateNodeData(id, { outputText: accumulated });
-              }
+            const delta = (parsed.type === "content_block_delta" ? parsed.delta?.text : null)
+              ?? parsed.choices?.[0]?.delta?.content
+              ?? "";
+            if (delta) {
+              accumulated += delta;
+              updateNodeData(id, { outputText: accumulated });
             }
           } catch { /* skip malformed SSE lines */ }
         }
@@ -196,7 +193,7 @@ export default function AssistantNode({ id, data, selected }: NodeProps<Assistan
       setLoading(false);
       abortRef.current = null;
     }
-  }, [busy, hasPrompt, localPrompt, id, updateNodeData]);
+  }, [busy, hasPrompt, providerKeyMissing, localPrompt, model, id, updateNodeData]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -370,23 +367,26 @@ export default function AssistantNode({ id, data, selected }: NodeProps<Assistan
                 className="flex items-center gap-1"
               >
                 <span className="text-[11px] text-[#A0A0A0] hover:text-white transition-colors">
-                  {MODELS.find((m) => m.id === model)?.label ?? model}
+                  {NODE_MODELS.find((m) => m.id === model)?.label ?? model}
                 </span>
                 <ChevronIcon open={modelOpen} />
               </button>
 
               {modelPopup.visible && (
                 <div className={`absolute bottom-full left-0 mb-2 w-44 bg-[#111622] border border-[#1E2840] rounded-md overflow-hidden z-[1002] shadow-2xl ${modelPopup.className}`}>
-                  {MODELS.map((m) => (
+                  {NODE_MODELS.map((m) => {
+                    const unavailable = textModelCredential(m.id) === "zhipu" ? zhipuKeySet === false : kieKeySet === false;
+                    return (
                     <button
                       key={m.id}
                       onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => { e.stopPropagation(); updateNodeData(id, { model: m.id }); setModelOpen(false); }}
-                      className={`w-full text-left px-3 py-[7px] text-[11px] hover:bg-[#141C28] transition-colors ${model === m.id ? "text-white" : "text-[#A0A0A0]"}`}
+                      disabled={unavailable}
+                      onClick={(e) => { e.stopPropagation(); if (!unavailable) updateNodeData(id, { model: m.id }); setModelOpen(false); }}
+                      className={`w-full text-left px-3 py-[7px] text-[11px] hover:bg-[#141C28] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${model === m.id ? "text-white" : "text-[#A0A0A0]"}`}
                     >
                       {m.label}
                     </button>
-                  ))}
+                  );})}
                 </div>
               )}
             </div>
@@ -402,7 +402,7 @@ export default function AssistantNode({ id, data, selected }: NodeProps<Assistan
                 Stop
               </button>
             ) : (
-              <GenerateButton onClick={handleGenerate} disabled={!hasPrompt || kieKeySet === false} />
+              <GenerateButton onClick={handleGenerate} disabled={!hasPrompt || providerKeyMissing} />
             ))}
           </div>
         </div>

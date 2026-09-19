@@ -96,6 +96,9 @@ export interface ImageModel {
   /** Magnific-specific request metadata for models served by api.magnific.com. */
   magnific?: {
     endpoint: string;
+    /** Alternate create/status route used when reference images are attached. */
+    referenceEndpoint?: string;
+    referenceStatusEndpoint?: string;
     model?: string;
     /** Optional reference-image field used by the Magnific endpoint. */
     imageInputKey?: string;
@@ -467,13 +470,14 @@ export const IMAGE_MODELS: ImageModel[] = [
     name: "GPT Image 2",
     provider: "Magnific",
     backend: "magnific",
-    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
-    supportsImages: false,
-    maxImages: 0,
+    ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
+    supportsImages: true,
+    maxImages: 16,
     supportsQuality: true,
     defaultQuality: "2k",
     apiInput: {
       aspectRatioKey: "aspect_ratio",
+      imageInputKey: "reference_images",
       qualityKey: "resolution",
       qualityMap: { "1k": "1k", "2k": "2k", "4k": "4k" },
       qualityOptions: ["1k", "2k", "4k"],
@@ -481,6 +485,10 @@ export const IMAGE_MODELS: ImageModel[] = [
     },
     magnific: {
       endpoint: "/v1/ai/text-to-image/gpt-image-2",
+      referenceEndpoint: "/v1/ai/text-to-image/gpt-image-2-edit",
+      referenceStatusEndpoint: "/v1/ai/text-to-image/gpt-image-2-edit",
+      imageInputKey: "reference_images",
+      imageInputMax: 16,
       aspectRatioFormat: "mapped",
       qualityFormat: "lower",
       extra: { quality: "high" },
@@ -489,16 +497,17 @@ export const IMAGE_MODELS: ImageModel[] = [
   {
     id: "magnific-gpt-image-2-5",
     apiId: "gpt-image-2-5",
-    name: "GPT Image 2.5",
+    name: "GPT Image 2.5 Flare",
     provider: "Magnific",
     backend: "magnific",
-    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
-    supportsImages: false,
-    maxImages: 0,
+    ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
+    supportsImages: true,
+    maxImages: 16,
     supportsQuality: true,
     defaultQuality: "2k",
     apiInput: {
       aspectRatioKey: "aspect_ratio",
+      imageInputKey: "reference_images",
       qualityKey: "resolution",
       qualityMap: { "1k": "1k", "2k": "2k", "4k": "4k" },
       qualityOptions: ["1k", "2k", "4k"],
@@ -506,90 +515,44 @@ export const IMAGE_MODELS: ImageModel[] = [
     },
     magnific: {
       endpoint: "/v1/ai/text-to-image/gpt-image-2-5",
+      referenceEndpoint: "/v1/ai/text-to-image/gpt-image-2-5-edit",
+      referenceStatusEndpoint: "/v1/ai/text-to-image/gpt-image-2-5-edit",
+      imageInputKey: "reference_images",
+      imageInputMax: 16,
       aspectRatioFormat: "mapped",
       qualityFormat: "lower",
       extra: { quality: "medium", variant: "flare" },
     },
   },
-  // ── Magnific Mystic ────────────────────────────────────────────────────────
-  // Mystic exposes its visual model as a request field rather than as a
-  // separate endpoint. Keeping these as separate app models gives users a
-  // familiar model picker while preserving a single backend adapter.
   {
-    id: "magnific-mystic-realism",
-    apiId: "mystic",
-    name: "Mystic · Realism",
+    id: "magnific-gpt-image-2-5-sunburst",
+    apiId: "gpt-image-2-5",
+    name: "GPT Image 2.5 Sunburst",
     provider: "Magnific",
     backend: "magnific",
-    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9", "5:4", "4:5"],
-    supportsImages: false,
-    maxImages: 0,
+    ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
+    supportsImages: true,
+    maxImages: 16,
     supportsQuality: true,
-    defaultQuality: "2k",
+    defaultQuality: "1k",
     apiInput: {
       aspectRatioKey: "aspect_ratio",
+      imageInputKey: "reference_images",
       qualityKey: "resolution",
+      qualityMap: { "1k": "1k", "2k": "2k", "4k": "4k" },
       qualityOptions: ["1k", "2k", "4k"],
-      promptMaxLength: 10000,
+      promptMaxLength: 32000,
     },
-    magnific: { endpoint: "/v1/ai/mystic", model: "realism", extra: { filter_nsfw: true } },
-  },
-  {
-    id: "magnific-mystic-fluid",
-    apiId: "mystic",
-    name: "Mystic · Fluid",
-    provider: "Magnific",
-    backend: "magnific",
-    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9", "5:4", "4:5"],
-    supportsImages: false,
-    maxImages: 0,
-    supportsQuality: true,
-    defaultQuality: "2k",
-    apiInput: {
-      aspectRatioKey: "aspect_ratio",
-      qualityKey: "resolution",
-      qualityOptions: ["1k", "2k", "4k"],
-      promptMaxLength: 10000,
+    magnific: {
+      endpoint: "/v1/ai/text-to-image/gpt-image-2-5",
+      referenceEndpoint: "/v1/ai/text-to-image/gpt-image-2-5-edit",
+      referenceStatusEndpoint: "/v1/ai/text-to-image/gpt-image-2-5-edit",
+      imageInputKey: "reference_images",
+      imageInputMax: 16,
+      aspectRatioFormat: "mapped",
+      qualityFormat: "lower",
+      extra: { quality: "medium", variant: "sunburst" },
     },
-    magnific: { endpoint: "/v1/ai/mystic", model: "fluid", extra: { filter_nsfw: true } },
-  },
-  {
-    id: "magnific-mystic-flexible",
-    apiId: "mystic",
-    name: "Mystic · Flexible",
-    provider: "Magnific",
-    backend: "magnific",
-    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9", "5:4", "4:5"],
-    supportsImages: false,
-    maxImages: 0,
-    supportsQuality: true,
-    defaultQuality: "2k",
-    apiInput: {
-      aspectRatioKey: "aspect_ratio",
-      qualityKey: "resolution",
-      qualityOptions: ["1k", "2k", "4k"],
-      promptMaxLength: 10000,
-    },
-    magnific: { endpoint: "/v1/ai/mystic", model: "flexible", extra: { filter_nsfw: true } },
-  },
-  {
-    id: "magnific-mystic-zen",
-    apiId: "mystic",
-    name: "Mystic · Zen",
-    provider: "Magnific",
-    backend: "magnific",
-    ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9", "5:4", "4:5"],
-    supportsImages: false,
-    maxImages: 0,
-    supportsQuality: true,
-    defaultQuality: "2k",
-    apiInput: {
-      aspectRatioKey: "aspect_ratio",
-      qualityKey: "resolution",
-      qualityOptions: ["1k", "2k", "4k"],
-      promptMaxLength: 10000,
-    },
-    magnific: { endpoint: "/v1/ai/mystic", model: "zen", extra: { filter_nsfw: true } },
   },
 ];
 
@@ -646,8 +609,17 @@ export interface VideoModel {
   maxReferenceVideos?: number;
   /** Max number of audioRef-handle audios accepted by this model (default 3) */
   maxReferenceAudios?: number;
+  /** Rules shared by the workflow and gallery reference pickers. */
+  referencePolicy?: {
+    /** Start/end frames cannot be combined with reference images or videos. */
+    visualExclusiveWithFrames: boolean;
+    /** Start/end frames cannot be combined with reference audio. */
+    audioExclusiveWithFrames: boolean;
+    /** Audio references need at least one reference image or video. */
+    audioRequiresVisualReference?: boolean;
+  };
   /** How @mention tags are serialised in the final prompt (default: "<<<image N>>>") */
-  resourceTagFormat?: "default" | "grok";
+  resourceTagFormat?: "default" | "grok" | "magnific";
   apiInput: {
     aspectRatioKey?: string;
     durationKey?: string;
@@ -990,6 +962,11 @@ export const VIDEO_MODELS: VideoModel[] = [
     maxResources: 9,
     maxReferenceVideos: 3,
     maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
     resolutions: ["480p", "720p", "1080p"],
     defaultResolution: "720p",
     apiInput: {
@@ -1023,6 +1000,11 @@ export const VIDEO_MODELS: VideoModel[] = [
     maxResources: 9,
     maxReferenceVideos: 3,
     maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
     resolutions: ["480p", "720p", "1080p"],
     defaultResolution: "720p",
     apiInput: {
@@ -1056,6 +1038,11 @@ export const VIDEO_MODELS: VideoModel[] = [
     maxResources: 9,
     maxReferenceVideos: 3,
     maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
     resolutions: ["480p", "720p"],
     defaultResolution: "720p",
     apiInput: {
@@ -1089,6 +1076,10 @@ export const VIDEO_MODELS: VideoModel[] = [
     maxResources: 30,
     maxReferenceVideos: 10,
     maxReferenceAudios: 10,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: false,
+    },
     resolutions: ["480p", "720p"],
     defaultResolution: "720p",
     apiInput: {
@@ -1122,6 +1113,10 @@ export const VIDEO_MODELS: VideoModel[] = [
     maxResources: 30,
     maxReferenceVideos: 10,
     maxReferenceAudios: 10,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: false,
+    },
     resolutions: ["480p", "720p"],
     defaultResolution: "720p",
     apiInput: {
@@ -1185,6 +1180,11 @@ export const VIDEO_MODELS: VideoModel[] = [
     maxResources: 9,
     maxReferenceVideos: 3,
     maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
     resolutions: ["768P", "2K"],
     defaultResolution: "2K",
     apiInput: {
@@ -1279,10 +1279,17 @@ export const VIDEO_MODELS: VideoModel[] = [
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
     defaultDuration: 5,
     defaultRatio: "16:9",
-    handles: ["prompt", "startFrame", "endFrame", "resource"],
+    handles: ["prompt", "startFrame", "endFrame", "resource", "referenceVideo", "audioRef"],
+    resourceTagFormat: "magnific",
     sound: true,
     supportsSeeds: true,
-    maxResources: 9,
+    maxResources: 30,
+    maxReferenceVideos: 10,
+    maxReferenceAudios: 10,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: false,
+    },
     resolutions: ["480p", "720p", "1080p"],
     defaultResolution: "720p",
     apiInput: {
@@ -1290,6 +1297,8 @@ export const VIDEO_MODELS: VideoModel[] = [
       durationMin: 4,
       durationMax: 30,
       referenceImagesKey: "reference_images",
+      referenceVideosKey: "reference_videos",
+      referenceAudiosKey: "reference_audios",
       promptMaxLength: 40000,
     },
     magnific: {
@@ -1321,20 +1330,30 @@ export const VIDEO_MODELS: VideoModel[] = [
     provider: "Magnific",
     backend: "magnific",
     ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
-    durations: [5, 10],
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     defaultDuration: 5,
     defaultRatio: "16:9",
-    handles: ["prompt", "startFrame", "endFrame", "resource"],
+    handles: ["prompt", "startFrame", "endFrame", "resource", "referenceVideo", "audioRef"],
+    resourceTagFormat: "magnific",
     sound: true,
     supportsSeeds: true,
     maxResources: 9,
+    maxReferenceVideos: 3,
+    maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
     resolutions: ["480p", "720p", "1080p", "2160p"],
     defaultResolution: "720p",
     apiInput: {
       aspectRatioKey: "aspect_ratio",
-      durationMin: 5,
-      durationMax: 10,
+      durationMin: 4,
+      durationMax: 15,
       referenceImagesKey: "reference_images",
+      referenceVideosKey: "reference_videos",
+      referenceAudiosKey: "reference_audios",
       promptMaxLength: 40000,
     },
     magnific: {
@@ -1362,20 +1381,30 @@ export const VIDEO_MODELS: VideoModel[] = [
     provider: "Magnific",
     backend: "magnific",
     ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
-    durations: [5, 10],
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     defaultDuration: 5,
     defaultRatio: "16:9",
-    handles: ["prompt", "startFrame", "endFrame", "resource"],
+    handles: ["prompt", "startFrame", "endFrame", "resource", "referenceVideo", "audioRef"],
+    resourceTagFormat: "magnific",
     sound: true,
     supportsSeeds: true,
     maxResources: 9,
+    maxReferenceVideos: 3,
+    maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
     resolutions: ["480p", "720p"],
     defaultResolution: "720p",
     apiInput: {
       aspectRatioKey: "aspect_ratio",
-      durationMin: 5,
-      durationMax: 10,
+      durationMin: 4,
+      durationMax: 15,
       referenceImagesKey: "reference_images",
+      referenceVideosKey: "reference_videos",
+      referenceAudiosKey: "reference_audios",
       promptMaxLength: 40000,
     },
     magnific: {
@@ -1401,20 +1430,30 @@ export const VIDEO_MODELS: VideoModel[] = [
     provider: "Magnific",
     backend: "magnific",
     ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
-    durations: [5, 10],
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     defaultDuration: 5,
     defaultRatio: "16:9",
-    handles: ["prompt", "startFrame", "endFrame", "resource"],
+    handles: ["prompt", "startFrame", "endFrame", "resource", "referenceVideo", "audioRef"],
+    resourceTagFormat: "magnific",
     sound: true,
     supportsSeeds: true,
     maxResources: 9,
+    maxReferenceVideos: 3,
+    maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
     resolutions: ["480p", "720p"],
     defaultResolution: "720p",
     apiInput: {
       aspectRatioKey: "aspect_ratio",
-      durationMin: 5,
-      durationMax: 10,
+      durationMin: 4,
+      durationMax: 15,
       referenceImagesKey: "reference_images",
+      referenceVideosKey: "reference_videos",
+      referenceAudiosKey: "reference_audios",
       promptMaxLength: 40000,
     },
     magnific: {
@@ -1434,94 +1473,4 @@ export const VIDEO_MODELS: VideoModel[] = [
     },
   },
 
-  // ── Magnific existing video models ─────────────────────────────────────────
-  {
-    id: "magnific-ltx-2-pro-t2v",
-    apiId: "ltx-2-pro",
-    name: "LTX Video 2.0 Pro · Text",
-    provider: "Magnific",
-    backend: "magnific",
-    ratios: ["16:9"],
-    durations: [6, 8, 10],
-    defaultDuration: 6,
-    defaultRatio: "16:9",
-    handles: ["prompt"],
-    sound: true,
-    supportsSeeds: true,
-    resolutions: ["1080p", "1440p", "2160p"],
-    defaultResolution: "1080p",
-    apiInput: {
-      durationMin: 6,
-      durationMax: 10,
-      promptMaxLength: 2000,
-    },
-    magnific: {
-      createEndpoint: "/v1/ai/text-to-video/ltx-2-pro",
-      statusEndpoint: "/v1/ai/text-to-video/ltx-2-pro",
-      inputMode: "text-to-video",
-      promptMaxLength: 2000,
-      fpsOptions: [25, 50],
-      defaultFps: 25,
-      includeFps: true,
-    },
-  },
-  {
-    id: "magnific-ltx-2-pro-i2v",
-    apiId: "ltx-2-pro",
-    name: "LTX Video 2.0 Pro · Image",
-    provider: "Magnific",
-    backend: "magnific",
-    ratios: ["16:9"],
-    durations: [6, 8, 10],
-    defaultDuration: 6,
-    defaultRatio: "16:9",
-    handles: ["prompt", "startFrame"],
-    requiredHandles: ["startFrame"],
-    sound: true,
-    supportsSeeds: true,
-    resolutions: ["1080p", "1440p", "2160p"],
-    defaultResolution: "1080p",
-    apiInput: {
-      durationMin: 6,
-      durationMax: 10,
-      promptMaxLength: 2000,
-    },
-    magnific: {
-      createEndpoint: "/v1/ai/image-to-video/ltx-2-pro",
-      statusEndpoint: "/v1/ai/image-to-video/ltx-2-pro",
-      inputMode: "image-to-video",
-      promptMaxLength: 2000,
-      fpsOptions: [25, 50],
-      defaultFps: 25,
-      includeFps: true,
-    },
-  },
-  {
-    id: "magnific-kling-2-6-pro",
-    apiId: "kling-v2-6-pro",
-    name: "Kling 2.6 Pro",
-    provider: "Magnific",
-    backend: "magnific",
-    ratios: ["16:9", "9:16", "1:1"],
-    durations: [5, 10],
-    defaultDuration: 5,
-    defaultRatio: "16:9",
-    handles: ["prompt", "startFrame"],
-    sound: true,
-    modes: [{ value: "0.5", label: "Balanced" }],
-    defaultMode: "0.5",
-    apiInput: {
-      durationMin: 5,
-      durationMax: 10,
-      promptMaxLength: 2500,
-    },
-    magnific: {
-      createEndpoint: "/v1/ai/image-to-video/kling-v2-6-pro",
-      statusEndpoint: "/v1/ai/image-to-video/kling-v2-6",
-      inputMode: "image-to-video",
-      imageInputKey: "image_url",
-      includeAspectRatio: true,
-      promptMaxLength: 2500,
-    },
-  },
 ];

@@ -85,7 +85,7 @@ function resolveMentions(
   prompt: string,
   labels: string[],
   imageUrls: string[],
-  tagFormat: "default" | "grok" = "default",
+  tagFormat: "default" | "grok" | "magnific" = "default",
 ): { resolvedPrompt: string; orderedUrls: string[] } {
   if (!labels.length) return { resolvedPrompt: prompt, orderedUrls: imageUrls };
 
@@ -146,7 +146,11 @@ function resolveMentions(
   for (let i = 0; i < spans.length; i++) {
     resolvedPrompt += prompt.slice(lastEnd, spans[i].start);
     if (spanUrls[i] !== null) {
-      resolvedPrompt += tagFormat === "grok" ? `@image${imageNum++} ` : `<<<image ${imageNum++}>>>`;
+      resolvedPrompt += tagFormat === "grok"
+        ? `@image${imageNum++} `
+        : tagFormat === "magnific"
+          ? `@Image${imageNum++}`
+          : `<<<image ${imageNum++}>>>`;
     } else {
       resolvedPrompt += prompt.slice(spans[i].start, spans[i].end);
     }
@@ -505,7 +509,9 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
       }
     };
 
-    es.onerror = () => es.close();
+    // Leave EventSource open so the browser can reconnect after a transient
+    // network/server interruption. The API route can resume persisted jobs.
+    es.onerror = () => undefined;
 
     return () => es.close();
   }, [data.taskId, status, id, updateNodeData]);
@@ -537,20 +543,21 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
     if (connectedHandles.has("resource")) activeHandles.delete("startFrame");
   }
 
-  // Seedance / MiniMax H3: first/last frames and multimodal references are mutually exclusive scenarios.
-  // Magnific's Seedance endpoints use the same contract.
-  const framesAndReferencesExclusive = cfg.id === "seedance-2-fast"
-    || cfg.id === "minimax-h3"
-    || (cfg.backend === "magnific" && Boolean(cfg.apiInput.referenceImagesKey));
-  if (framesAndReferencesExclusive) {
+  // Frame/reference combinations differ by model. In particular, Seedance 2.5
+  // accepts reference audio together with frames while visual references remain exclusive.
+  if (cfg.referencePolicy) {
     const hasFrame = connectedHandles.has("startFrame") || connectedHandles.has("endFrame");
-    const hasRef = connectedHandles.has("resource") || connectedHandles.has("referenceVideo") || connectedHandles.has("audioRef");
-    if (hasFrame) {
+    const hasVisualRef = connectedHandles.has("resource") || connectedHandles.has("referenceVideo");
+    const hasAudioRef = connectedHandles.has("audioRef");
+    if (hasFrame && cfg.referencePolicy.visualExclusiveWithFrames) {
       activeHandles.delete("resource");
       activeHandles.delete("referenceVideo");
+    }
+    if (hasFrame && cfg.referencePolicy.audioExclusiveWithFrames) {
       activeHandles.delete("audioRef");
     }
-    if (hasRef) {
+    if ((hasVisualRef && cfg.referencePolicy.visualExclusiveWithFrames)
+      || (hasAudioRef && cfg.referencePolicy.audioExclusiveWithFrames)) {
       activeHandles.delete("startFrame");
       activeHandles.delete("endFrame");
     }
@@ -834,6 +841,40 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
       setTimeout(() => setErrorHandles(new Set()), 1400);
       updateNodeData(id, { hasError: true });
       addToast("Connect all required inputs for this model.", "error");
+      return;
+    }
+
+    const hasFrameInput = Boolean(upstream.startFrameUrl || upstream.endFrameUrl);
+    const hasVisualReferences = orderedResources.length > 0 || upstream.referenceVideoUrls.length > 0;
+    const hasAudioReferences = upstream.referenceAudioUrls.length > 0;
+    if (cfg.referencePolicy?.audioRequiresVisualReference && hasAudioReferences && !hasVisualReferences) {
+      setErrorHandles(new Set(["audioRef", "resource", "referenceVideo"]));
+      setTimeout(() => setErrorHandles(new Set()), 1400);
+      updateNodeData(id, { hasError: true });
+      addToast(
+        locale === "zh-CN"
+          ? "该模型的参考音频必须与至少一张参考图或一段参考视频同时使用。"
+          : "Reference audio requires at least one reference image or video for this model.",
+        "error",
+      );
+      return;
+    }
+    if (cfg.referencePolicy?.visualExclusiveWithFrames && hasFrameInput && hasVisualReferences) {
+      addToast(
+        locale === "zh-CN"
+          ? "该模型不能同时使用首尾帧和视觉参考素材。"
+          : "This model cannot combine frames with visual references.",
+        "error",
+      );
+      return;
+    }
+    if (cfg.referencePolicy?.audioExclusiveWithFrames && hasFrameInput && hasAudioReferences) {
+      addToast(
+        locale === "zh-CN"
+          ? "该模型不能同时使用首尾帧和参考音频。"
+          : "This model cannot combine frames with reference audio.",
+        "error",
+      );
       return;
     }
 
@@ -1176,7 +1217,8 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
     >
       <CornerResizer minWidth={280} minHeight={80} keepAspectRatio={!!data.videoUrl} />
       <NodeActionBar
-        visible={!!selected && !data.locked && !parentGroupSelected && !multiSelected && !readOnly}
+        visible={!!selected && !data.locked && !parentGroupSelected && !multiSelected && !readOnly
+          && !(modelOpen || ratioOpen || durOpen || modeOpen || grokResOpen)}
         hasContent={!!data.videoUrl}
         isSaving={isSaving}
         onPreview={openLightbox}
@@ -2111,7 +2153,7 @@ function FloatMenu({ children, fullWidth = false, open }: { children: React.Reac
   const { visible, className } = useAnimatedPopup(open);
   if (!visible) return null;
   return (
-    <div className={`absolute bottom-full left-0 mb-1.5 bg-[#111622] border border-[#222] rounded-xl overflow-hidden z-[1002] shadow-2xl ${className}`}>
+    <div className={`absolute bottom-full left-0 mb-1.5 ${fullWidth ? "w-full" : "min-w-56"} max-h-[min(70vh,30rem)] overflow-y-auto bg-[#111622] border border-[#222] rounded-xl z-[1002] shadow-2xl ${className}`}>
       {children}
     </div>
   );

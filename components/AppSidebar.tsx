@@ -678,6 +678,7 @@ export function AppSidebar() {
   const setKieKeySet      = useWorkflowStore((s) => s.setKieKeySet);
   const setMagnificKeySet = useWorkflowStore((s) => s.setMagnificKeySet);
   const setAzureKeySet    = useWorkflowStore((s) => s.setAzureKeySet);
+  const setZhipuKeySet    = useWorkflowStore((s) => s.setZhipuKeySet);
 
   React.useEffect(() => {
     fetch("/api/settings/kie-key")
@@ -692,7 +693,11 @@ export function AppSidebar() {
       .then((r) => r.json())
       .then((d) => setAzureKeySet(!!d.hasToken))
       .catch(() => setAzureKeySet(null));
-  }, [setKieKeySet, setMagnificKeySet, setAzureKeySet]);
+    fetch("/api/settings/zhipu-key")
+      .then((r) => r.json())
+      .then((d) => setZhipuKeySet(!!d.hasToken))
+      .catch(() => setZhipuKeySet(null));
+  }, [setKieKeySet, setMagnificKeySet, setAzureKeySet, setZhipuKeySet]);
 
   React.useEffect(() => {
     const fetchBalance = async () => {

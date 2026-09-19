@@ -316,7 +316,9 @@ export async function POST(req: NextRequest) {
     debugOnly?:          boolean;
   };
 
-  if (debugOnly) {
+  // Magnific has provider-specific endpoints and payload formats, so let its
+  // branch below build the real request before returning debug output.
+  if (debugOnly && !model.startsWith("magnific-")) {
     const body = { model, prompt, imageUrls, aspectRatio, quality, azureQuality, azureResolution, azureCustomWidth, azureCustomHeight };
     console.log("[DEBUG] generate payload:", JSON.stringify(body, null, 2));
     return NextResponse.json({ ok: true });
@@ -353,7 +355,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Magnific API key is not configured. Add it in Settings." }, { status: 401 });
     }
 
-    const endpoint = `${MAGNIFIC_BASE}${cfg.magnific.endpoint}`;
+    const hasReferences = r2ImageUrls.length > 0;
+    const endpointPath = hasReferences
+      ? (cfg.magnific.referenceEndpoint ?? cfg.magnific.endpoint)
+      : cfg.magnific.endpoint;
+    const statusEndpoint = hasReferences
+      ? (cfg.magnific.referenceStatusEndpoint ?? endpointPath)
+      : cfg.magnific.endpoint;
+    const endpoint = `${MAGNIFIC_BASE}${endpointPath}`;
     let magnificReferenceImages: MagnificReferenceImage[] = [];
     if (cfg.magnific.imageInputKey && r2ImageUrls.length > 0) {
       try {
@@ -380,6 +389,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: { "x-magnific-api-key": magnificKey, "Content-Type": "application/json" },
       body: JSON.stringify(input),
+      signal: AbortSignal.timeout(120_000),
     });
     const text = await res.text();
     let payload: unknown = null;
@@ -397,6 +407,7 @@ export async function POST(req: NextRequest) {
     guestDb.insertGeneration({
       task_id: taskId,
       provider_task_id: remoteTaskId,
+      provider_status_endpoint: statusEndpoint,
       provider: "magnific",
       user_id: currentUserId,
       generation_type: "image",
@@ -406,7 +417,14 @@ export async function POST(req: NextRequest) {
       aspect_ratio: aspectRatio,
       quality: quality || cfg.defaultQuality || "2k",
     });
-    pollMagnificJob({ localTaskId: taskId, remoteTaskId, modelId: model, type: "image", userId: currentUserId });
+    pollMagnificJob({
+      localTaskId: taskId,
+      remoteTaskId,
+      modelId: model,
+      type: "image",
+      userId: currentUserId,
+      statusEndpoint,
+    });
     return NextResponse.json({ taskId });
   }
 

@@ -4,6 +4,7 @@ import type { MagnificReferenceImage } from "@/lib/magnificMime";
 export const MAGNIFIC_BASE = "https://api.magnific.com";
 
 const IMAGE_RATIOS: Record<string, string> = {
+  "auto": "auto",
   "1:1": "square_1_1",
   "16:9": "widescreen_16_9",
   "9:16": "social_story_9_16",
@@ -99,6 +100,8 @@ export function buildMagnificVideoInput(opts: {
   startFrameUrl?: string;
   endFrameUrl?: string;
   referenceImageUrls?: string[];
+  referenceVideoUrls?: string[];
+  referenceAudioUrls?: string[];
   aspectRatio: string;
   duration: number;
   resolution: string;
@@ -129,16 +132,20 @@ export function buildMagnificVideoInput(opts: {
   if (model.apiInput.referenceImagesKey && opts.referenceImageUrls?.length && !hasFrameInput) {
     input[model.apiInput.referenceImagesKey] = opts.referenceImageUrls;
   }
-
-  if (model.id === "magnific-kling-2-6-pro") {
-    input.aspect_ratio = magnificVideoAspectRatio(opts.aspectRatio);
-    const parsedCfgScale = Number(opts.mode);
-    input.cfg_scale = Number.isFinite(parsedCfgScale) ? Math.max(0, Math.min(1, parsedCfgScale)) : 0.5;
-  } else {
-    if (opts.seed !== undefined && Number.isFinite(opts.seed)) input.seed = opts.seed;
-    if (magnific.includeAspectRatio) input.aspect_ratio = magnificVideoAspectRatio(opts.aspectRatio);
-    if (magnific.includeFps) input.fps = opts.fps ?? magnific.defaultFps ?? 25;
+  if (model.apiInput.referenceVideosKey && opts.referenceVideoUrls?.length && !hasFrameInput) {
+    input[model.apiInput.referenceVideosKey] = opts.referenceVideoUrls;
   }
+  if (
+    model.apiInput.referenceAudiosKey
+    && opts.referenceAudioUrls?.length
+    && (!hasFrameInput || model.referencePolicy?.audioExclusiveWithFrames === false)
+  ) {
+    input[model.apiInput.referenceAudiosKey] = opts.referenceAudioUrls;
+  }
+
+  if (opts.seed !== undefined && Number.isFinite(opts.seed)) input.seed = opts.seed;
+  if (magnific.includeAspectRatio) input.aspect_ratio = magnificVideoAspectRatio(opts.aspectRatio);
+  if (magnific.includeFps) input.fps = opts.fps ?? magnific.defaultFps ?? 25;
 
   return input;
 }

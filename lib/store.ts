@@ -161,6 +161,10 @@ interface WorkflowStore {
   magnificKeySet:    boolean | null;
   setMagnificKeySet: (v: boolean | null) => void;
 
+  // ── Zhipu AI key status (null = unknown, true = set, false = not set)
+  zhipuKeySet:    boolean | null;
+  setZhipuKeySet: (v: boolean | null) => void;
+
   // ── Azure key status (null = unknown, true = set, false = not set)
   azureKeySet:    boolean | null;
   setAzureKeySet: (v: boolean | null) => void;
@@ -704,6 +708,9 @@ export const useWorkflowStore = create<WorkflowStore>()(
 
         magnificKeySet:    null,
         setMagnificKeySet: (v) => set({ magnificKeySet: v }),
+
+        zhipuKeySet:    null,
+        setZhipuKeySet: (v) => set({ zhipuKeySet: v }),
 
         azureKeySet:    null,
         setAzureKeySet: (v) => set({ azureKeySet: v }),

@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { jobStore, type JobResult } from "@/lib/jobStore";
 import { jobEvents } from "@/lib/jobEvents";
 import { resumeKieJob } from "@/lib/kieJobPoller";
+import { resumeMagnificJob } from "@/lib/magnificJobPoller";
+import { ASYNC_GENERATION_TIMEOUT_MS } from "@/lib/jobTiming";
 import * as guestDb from "@/lib/guest/db";
 
 const SSE_HEADERS = {
@@ -9,8 +11,6 @@ const SSE_HEADERS = {
   "Cache-Control": "no-cache",
   "Connection": "keep-alive",
 };
-
-const TIMEOUT_MS = 12 * 60 * 1000; // 12 min hard cap
 
 function immediate(payload: JobResult): Response {
   return new Response(`data: ${JSON.stringify(payload)}\n\n`, { headers: SSE_HEADERS });
@@ -33,8 +33,10 @@ export async function GET(req: NextRequest) {
   const taskId = req.nextUrl.searchParams.get("taskId");
   if (!taskId) return new Response("taskId required", { status: 400 });
 
-  // Already settled in jobStore — respond immediately, no stream needed
-  const existing = jobStore.get(taskId);
+  const persisted = guestDb.recoverJob(taskId);
+  let existing = jobStore.get(taskId);
+
+  // Already settled in jobStore — respond immediately, no stream needed.
   if (existing && existing.status !== "pending") {
     return immediate(existing);
   }
@@ -45,12 +47,29 @@ export async function GET(req: NextRequest) {
       jobStore.set(taskId, recovered);
       return immediate(recovered);
     }
-    // No DB record either — truly not found
-    return immediate({ status: "error", error: "Job not found" });
+    if (!persisted || persisted.status !== "pending") {
+      return immediate({ status: "error", error: "Job not found" });
+    }
+    existing = {
+      status: "pending",
+      type: persisted.generation_type === "video" ? "video" : "image",
+      userId: persisted.user_id ?? undefined,
+    };
+    jobStore.set(taskId, existing);
   }
 
-  // Restart the kie.ai poller if a server restart lost it.
-  if (!taskId.startsWith("azure-")) {
+  // Restart the correct provider poller if a server restart lost it.
+  if ((persisted?.provider === "magnific" || taskId.startsWith("magnific-"))
+      && persisted?.provider_task_id && persisted.model) {
+    resumeMagnificJob(
+      taskId,
+      persisted.provider_task_id,
+      persisted.model,
+      persisted.generation_type === "video" ? "video" : "image",
+      persisted.user_id,
+      persisted.provider_status_endpoint,
+    );
+  } else if (!taskId.startsWith("azure-")) {
     resumeKieJob(taskId, existing.type === "video" ? "video" : "image");
   }
 
@@ -59,19 +78,21 @@ export async function GET(req: NextRequest) {
     start(controller) {
       const enc = new TextEncoder();
       let closed = false;
-
-      const close = () => {
-        if (closed) return;
-        closed = true;
-        clearInterval(heartbeat);
-        clearTimeout(timeout);
-        controller.close();
-      };
+      const eventName = `job:${taskId}`;
 
       const send = (payload: JobResult) => {
         if (closed) return;
         controller.enqueue(enc.encode(`data: ${JSON.stringify(payload)}\n\n`));
         close();
+      };
+
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        jobEvents.off(eventName, send);
+        clearInterval(heartbeat);
+        clearTimeout(timeout);
+        controller.close();
       };
 
       // Keepalive comment every 25 s (proxies drop idle SSE connections)
@@ -82,12 +103,16 @@ export async function GET(req: NextRequest) {
       // Hard cap — emit error if callback never arrives
       const timeout = setTimeout(() => {
         send({ status: "error", error: "Generation timed out" });
-      }, TIMEOUT_MS);
+      }, ASYNC_GENERATION_TIMEOUT_MS);
 
-      jobEvents.once(`job:${taskId}`, send);
+      jobEvents.on(eventName, send);
+
+      // The poller may have completed between the initial check and listener
+      // registration. Re-read after subscribing so that completion cannot be lost.
+      const latest = jobStore.get(taskId);
+      if (latest && latest.status !== "pending") send(latest);
 
       req.signal.addEventListener("abort", () => {
-        jobEvents.off(`job:${taskId}`, send);
         close();
       });
     },

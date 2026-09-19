@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { getKieToken } from "@/lib/getKieToken";
 import { getAzureToken } from "@/lib/getAzureKey";
+import { getZhipuKeyForUser } from "@/lib/getZhipuKey";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -107,6 +108,51 @@ export async function POST(req: NextRequest) {
         "Content-Type":      "text/event-stream",
         "Cache-Control":     "no-cache, no-transform",
         "Connection":        "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
+  // ── Zhipu AI (OpenAI-compatible chat completions) ─────────────────────────
+  if (model === "glm-5.3-flash") {
+    const zhipuKey = await getZhipuKeyForUser();
+    if (!zhipuKey) {
+      return new Response(
+        JSON.stringify({ error: "No Zhipu AI API key configured. Add one in Settings." }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    const upstream = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${zhipuKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "glm-5.3-flash",
+        messages,
+        stream: true,
+        max_tokens: 8192,
+      }),
+    });
+    if (!upstream.ok) {
+      const errText = await upstream.text();
+      let errorMsg = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        errorMsg = parsed?.error?.message ?? parsed?.message ?? errText;
+      } catch { /* use raw text */ }
+      return new Response(
+        JSON.stringify({ error: `Zhipu AI ${upstream.status}: ${errorMsg}` }),
+        { status: upstream.status, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return new Response(upstream.body, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
         "X-Accel-Buffering": "no",
       },
     });

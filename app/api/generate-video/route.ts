@@ -58,26 +58,59 @@ export async function POST(req: NextRequest) {
   const cfg = VIDEO_MODELS.find((m) => m.id === videoModel);
   if (!cfg) return NextResponse.json({ error: `Unknown video model: ${videoModel}` }, { status: 400 });
 
-  if (cfg.backend === "magnific" && cfg.magnific) {
-    if (!Array.isArray(rawRefImages) || rawRefImages.some((url) => typeof url !== "string" || !url)) {
-      return NextResponse.json({ error: "Reference images must be a list of valid URLs" }, { status: 400 });
+  const referenceInputs = [
+    ["images", rawRefImages],
+    ["videos", rawRefVideoUrls],
+    ["audios", rawRefAudioUrls],
+  ] as const;
+  for (const [kind, values] of referenceInputs) {
+    if (!Array.isArray(values) || values.some((url) => typeof url !== "string" || !url)) {
+      return NextResponse.json({ error: `Reference ${kind} must be a list of valid URLs.` }, { status: 400 });
     }
-    const referenceImageInputs = rawRefImages as string[];
-    const maxReferenceImages = cfg.maxResources ?? 0;
-    if (referenceImageInputs.length > maxReferenceImages) {
-      return NextResponse.json({
-        error: `Reference image limit exceeded: ${cfg.name} supports up to ${maxReferenceImages} image(s).`,
-      }, { status: 400 });
-    }
-    if (referenceImageInputs.length > 0 && !cfg.apiInput.referenceImagesKey) {
-      return NextResponse.json({ error: `${cfg.name} does not support reference images.` }, { status: 400 });
-    }
-    if (referenceImageInputs.length > 0 && (rawStartFrame || rawEndFrame)) {
-      return NextResponse.json({
-        error: "Reference images cannot be combined with a start or end frame for this Magnific model.",
-      }, { status: 400 });
-    }
+  }
 
+  const referenceImageInputs = rawRefImages as string[];
+  const referenceVideoInputs = rawRefVideoUrls as string[];
+  const referenceAudioInputs = rawRefAudioUrls as string[];
+  const referenceLimits = [
+    ["image", referenceImageInputs.length, cfg.maxResources ?? 0, cfg.apiInput.referenceImagesKey],
+    ["video", referenceVideoInputs.length, cfg.maxReferenceVideos ?? 0, cfg.apiInput.referenceVideosKey],
+    ["audio", referenceAudioInputs.length, cfg.maxReferenceAudios ?? 0, cfg.apiInput.referenceAudiosKey],
+  ] as const;
+  for (const [kind, count, limit, inputKey] of referenceLimits) {
+    if (count > 0 && !inputKey) {
+      return NextResponse.json({ error: `${cfg.name} does not support reference ${kind}s.` }, { status: 400 });
+    }
+    if (count > limit) {
+      return NextResponse.json({
+        error: `Reference ${kind} limit exceeded: ${cfg.name} supports up to ${limit}.`,
+      }, { status: 400 });
+    }
+  }
+
+  const hasFrameInput = Boolean(rawStartFrame || rawEndFrame);
+  const hasVisualReferences = referenceImageInputs.length > 0 || referenceVideoInputs.length > 0;
+  const policy = cfg.referencePolicy;
+  if (policy?.visualExclusiveWithFrames && hasFrameInput && hasVisualReferences) {
+    return NextResponse.json({
+      error: "Reference images or videos cannot be combined with a start or end frame for this model.",
+    }, { status: 400 });
+  }
+  if (policy?.audioExclusiveWithFrames && hasFrameInput && referenceAudioInputs.length > 0) {
+    return NextResponse.json({
+      error: "Reference audio cannot be combined with a start or end frame for this model.",
+    }, { status: 400 });
+  }
+  if (policy?.audioRequiresVisualReference && referenceAudioInputs.length > 0 && !hasVisualReferences) {
+    return NextResponse.json({
+      error: "Reference audio requires at least one reference image or video for this model.",
+    }, { status: 400 });
+  }
+
+  if (cfg.backend === "magnific" && cfg.magnific) {
+    if (rawEndFrame && !rawStartFrame) {
+      return NextResponse.json({ error: "An end frame requires a start frame for this Magnific model." }, { status: 400 });
+    }
     const magnificKey = await getMagnificKeyForUser();
     if (!magnificKey) {
       return NextResponse.json({ error: "Magnific API key is not configured. Add it in Settings." }, { status: 401 });
@@ -86,11 +119,15 @@ export async function POST(req: NextRequest) {
     let startFrameUrl: string | undefined;
     let endFrameUrl: string | undefined;
     let referenceImageUrls: string[] = [];
+    let referenceVideoUrls: string[] = [];
+    let referenceAudioUrls: string[] = [];
     try {
-      [startFrameUrl, endFrameUrl, referenceImageUrls] = await Promise.all([
+      [startFrameUrl, endFrameUrl, referenceImageUrls, referenceVideoUrls, referenceAudioUrls] = await Promise.all([
         rawStartFrame ? uploadMagnificAsset(rawStartFrame, magnificKey) : Promise.resolve(undefined),
         rawEndFrame ? uploadMagnificAsset(rawEndFrame, magnificKey) : Promise.resolve(undefined),
         Promise.all(referenceImageInputs.map((url) => uploadMagnificAsset(url, magnificKey))),
+        Promise.all(referenceVideoInputs.map((url) => uploadMagnificAsset(url, magnificKey))),
+        Promise.all(referenceAudioInputs.map((url) => uploadMagnificAsset(url, magnificKey))),
       ]);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -117,6 +154,8 @@ export async function POST(req: NextRequest) {
       startFrameUrl,
       endFrameUrl,
       referenceImageUrls,
+      referenceVideoUrls,
+      referenceAudioUrls,
       aspectRatio,
       duration: clampedDuration,
       resolution,
@@ -136,6 +175,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: { "x-magnific-api-key": magnificKey, "Content-Type": "application/json" },
       body: JSON.stringify(input),
+      signal: AbortSignal.timeout(120_000),
     });
     const createdText = await createRes.text();
     let created: unknown = null;
@@ -163,7 +203,13 @@ export async function POST(req: NextRequest) {
       aspect_ratio: aspectRatio,
       duration: clampedDuration,
       sound: Boolean(sound),
-      reference_image_urls: [startFrameUrl, endFrameUrl, ...referenceImageUrls]
+      reference_image_urls: [
+        startFrameUrl,
+        endFrameUrl,
+        ...referenceImageUrls,
+        ...referenceVideoUrls,
+        ...referenceAudioUrls,
+      ]
         .filter((url): url is string => Boolean(url)),
     });
     pollMagnificJob({

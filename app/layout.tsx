@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Doto } from "next/font/google";
 import "./globals.css";
 import { AppSidebar } from "@/components/AppSidebar";
 import GlobalModals from "@/components/GlobalModals";
@@ -10,22 +9,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cookies } from "next/headers";
 import { DragDropGuard } from "@/components/DragDropGuard";
 import { LanguageProvider } from "@/components/LanguageProvider";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const doto = Doto({
-  variable: "--font-doto",
-  subsets: ["latin"],
-  weight: ["900"],
-});
 
 export const metadata: Metadata = {
   title: "HeliosGen",
@@ -49,7 +32,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${doto.variable} antialiased dark`}
+      className="antialiased dark"
       style={{ height: "100%" }}
     >
       <body className="bg-black text-white h-full overflow-hidden">

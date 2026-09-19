@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { getToken } from "@/lib/galleryUtils";
-import { MODEL_GROUPS, MODELS, type ModelId } from "@/lib/models";
+import { MODEL_GROUPS, MODELS, textModelCredential, type ModelId } from "@/lib/models";
 import { useChatSessionStore } from "@/lib/chatSessionStore";
 import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
 import { useWorkflowStore } from "@/lib/store";
@@ -32,7 +32,16 @@ export function QuickAssist() {
 
   const { createSession, upsertSession } = useChatSessionStore();
   const azureKeySet = useWorkflowStore((s) => s.azureKeySet);
-  const disabledIds = azureKeySet === true ? [] : ["azure-auto"];
+  const kieKeySet = useWorkflowStore((s) => s.kieKeySet);
+  const zhipuKeySet = useWorkflowStore((s) => s.zhipuKeySet);
+  const disabledIds = [
+    ...(azureKeySet === true ? [] : ["azure-auto"]),
+    ...(zhipuKeySet === true ? [] : ["glm-5.3-flash"]),
+  ];
+  const credential = textModelCredential(model);
+  const providerKeyMissing = credential === "kie" ? kieKeySet === false
+    : credential === "azure" ? azureKeySet !== true
+    : zhipuKeySet !== true;
 
   // Sync to store when streaming stops
   useEffect(() => {
@@ -271,7 +280,7 @@ export function QuickAssist() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "12px", padding: "8px 8px 8px 12px" }}>
               <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="Describe your idea…" rows={1} disabled={streaming} style={{ flex: 1, background: "transparent", border: "none", outline: "none", resize: "none", color: "rgba(255,255,255,0.88)", fontSize: "13.5px", fontFamily: "inherit", letterSpacing: "-0.01em", lineHeight: "22px", maxHeight: "96px", overflowY: "auto", padding: 0, cursor: streaming ? "not-allowed" : "text" }}
                 onInput={e => { const t = e.currentTarget; t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 96) + "px"; }} />
-              <button onClick={() => send(input)} disabled={!input.trim() || streaming || disabledIds.includes(model)} style={{ width: "32px", height: "32px", borderRadius: "8px", border: "none", background: input.trim() && !streaming && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)", color: input.trim() && !streaming && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)", cursor: input.trim() && !streaming && !disabledIds.includes(model) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, transition: "background 150ms, color 150ms" }}>
+              <button onClick={() => send(input)} disabled={!input.trim() || streaming || providerKeyMissing || disabledIds.includes(model)} style={{ width: "32px", height: "32px", borderRadius: "8px", border: "none", background: input.trim() && !streaming && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.07)", color: input.trim() && !streaming && !providerKeyMissing && !disabledIds.includes(model) ? "rgba(45,212,191,0.9)" : "rgba(255,255,255,0.25)", cursor: input.trim() && !streaming && !providerKeyMissing && !disabledIds.includes(model) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, transition: "background 150ms, color 150ms" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </button>
             </div>
@@ -296,12 +305,12 @@ export function QuickAssist() {
                             return (
                             <button key={m.id}
                               onClick={() => { if (!isDisabled) { setModel(m.id); setPreferredModel(m.id); setModelOpen(false); } }}
-                              title={isDisabled ? "Configure Azure in Settings → API Keys" : undefined}
+                              title={isDisabled ? "Configure this provider in Settings → API Keys" : undefined}
                               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "7px 8px", borderRadius: "7px", border: "none", background: model === m.id ? "rgba(45,212,191,0.12)" : "transparent", color: isDisabled ? "rgba(255,255,255,0.25)" : model === m.id ? "rgba(94,234,212,0.95)" : "rgba(255,255,255,0.7)", fontSize: "13px", fontFamily: "inherit", cursor: isDisabled ? "not-allowed" : "pointer", textAlign: "left", transition: "background 100ms", opacity: isDisabled ? 0.5 : 1 }}
                               onMouseEnter={e => { if (!isDisabled && model !== m.id) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
                               onMouseLeave={e => { if (!isDisabled && model !== m.id) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}>
                               <span>{m.label}</span>
-                              <span style={{ fontSize: "10px", color: isDisabled ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.28)", marginLeft: "8px" }}>{isDisabled ? "needs Azure key" : m.desc}</span>
+                              <span style={{ fontSize: "10px", color: isDisabled ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.28)", marginLeft: "8px" }}>{isDisabled ? "needs API key" : m.desc}</span>
                             </button>
                             );
                           })}

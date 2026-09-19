@@ -37,7 +37,21 @@ export const MODEL_GROUPS: ModelGroup[] = [
       { id: "azure-auto", label: "Azure Auto", desc: "Router" },
     ],
   },
+  {
+    label: "Zhipu AI",
+    models: [
+      { id: "glm-5.3-flash", label: "GLM-5.3-Flash", desc: "Fast multimodal" },
+    ],
+  },
 ];
 
 export const MODELS: Model[] = MODEL_GROUPS.flatMap(g => g.models);
 export type ModelId = string;
+
+export type TextModelCredential = "kie" | "azure" | "zhipu";
+
+export function textModelCredential(modelId: string): TextModelCredential {
+  if (modelId === "azure-auto") return "azure";
+  if (modelId === "glm-5.3-flash") return "zhipu";
+  return "kie";
+}

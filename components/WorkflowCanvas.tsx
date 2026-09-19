@@ -22,6 +22,7 @@ import { requestWorkflowSync } from "@/lib/workflowSyncBus";
 import { IMAGE_MODELS, VIDEO_MODELS } from "@/lib/modelConfig";
 import { getModelProvider } from "@/lib/providers";
 import { localizeGenerationError } from "@/lib/generationErrors";
+import { ASYNC_GENERATION_TIMEOUT_MS } from "@/lib/jobTiming";
 import CuttableEdge from "@/components/edges/CuttableEdge";
 import { topoSort, resolveInputs } from "@/lib/executor";
 import { NODE_SIZE, FALLBACK_SIZE, getLastNodeSettings, getDefaultNodeSize } from "@/lib/nodeTypes";
@@ -1284,7 +1285,8 @@ export default function WorkflowCanvas() {
           // Poll /api/job-status until done (image generate is async/callback-based)
           push(`[${node.id}] waiting for result…`);
           let imageUrl: string | undefined;
-          for (let attempt = 0; attempt < 120; attempt++) {
+          const maxAttempts = Math.ceil(ASYNC_GENERATION_TIMEOUT_MS / 3_000);
+          for (let attempt = 0; attempt < maxAttempts; attempt++) {
             await new Promise((r) => setTimeout(r, 3000));
             const poll = await fetch(`/api/job-status?taskId=${taskId}`);
             const result = await poll.json();

@@ -15,10 +15,10 @@ import { jobStore, type JobResult } from "./jobStore";
 import { jobEvents } from "./jobEvents";
 import { mirrorToR2 } from "./storage";
 import * as guestDb from "./guest/db";
+import { ASYNC_GENERATION_TIMEOUT_MS } from "./jobTiming";
 
 const BASE = "https://api.kie.ai";
 const POLL_INTERVAL_MS = 3_000;
-const MAX_POLL_MS = 12 * 60 * 1000; // matches the SSE hard cap in job-status
 
 type Kind = "image" | "video";
 
@@ -46,7 +46,9 @@ export function pollKieJob(taskId: string, apiKey: string, kind: Kind): void {
 // comes back `{ msg: "recordInfo is null" }`, which the loop then settles as a
 // spurious error — clobbering the real job that's still running locally.
 function isKieTaskId(taskId: string): boolean {
-  return !taskId.startsWith("azure-") && !taskId.startsWith("codex-");
+  return !taskId.startsWith("azure-")
+    && !taskId.startsWith("codex-")
+    && !taskId.startsWith("magnific-");
 }
 
 /**
@@ -64,7 +66,7 @@ export function resumeKieJob(taskId: string, kind: Kind): void {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function loop(taskId: string, apiKey: string, kind: Kind): Promise<void> {
-  const deadline = Date.now() + MAX_POLL_MS;
+  const deadline = Date.now() + ASYNC_GENERATION_TIMEOUT_MS;
 
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
@@ -73,7 +75,10 @@ async function loop(taskId: string, apiKey: string, kind: Kind): Promise<void> {
     try {
       const res = await fetch(
         `${BASE}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`,
-        { headers: { Authorization: `Bearer ${apiKey}` } },
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal: AbortSignal.timeout(60_000),
+        },
       );
       const json = await res.json();
       if (json?.code !== undefined && json.code !== 200 && json.code !== 0) {

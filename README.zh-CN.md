@@ -21,9 +21,9 @@ HeliosGenKing 在保留原有工作流画布、图片/视频生成、素材库�
 
 - English / 简体中文语言选择，语言偏好保存在本地。
 - Magnific API 密钥管理入口。
-- Magnific Mystic 图片模型：Realism、Fluid、Flexible、Zen。
-- Magnific LTX Video 2.0 Pro：文生视频和图生视频。
-- Magnific Kling 2.6 Pro：视频生成、画面比例、时长和音频选项。
+- Magnific 图片模型：Google Nano Banana 2、Google Nano Banana Pro、GPT Image 2、GPT Image 2.5 Flare、GPT Image 2.5 Sunburst。
+- Magnific 视频模型：Seedance 2.5、2.0、2.0 Fast、2.0 Mini。
+- Zhipu AI 的 GLM-5.3-Flash 文本模型。
 - 本地图片在图生视频前上传到 Magnific 临时素材服务，结果再保存回本地媒体库。
 - 使用 SQLite 保存本地生成任务和远程任务 ID，应用重启后可以继续轮询未完成任务。
 
@@ -71,6 +71,7 @@ Tauri 不能跨平台编译，请在目标系统上构建。构建产物位于 `
 KIE_API_KEY=
 MAGNIFIC_API_KEY=
 AZURE_API_KEY=
+ZHIPU_API_KEY=
 ```
 
 不要把真实 API Key 提交到 Git。应用默认把生成记录、设置和媒体保存在本机；Magnific 图生视频的临时 `asset_url` 不会长期写入本地数据库。
@@ -84,9 +85,8 @@ AZURE_API_KEY=
 - Seedream 5.0 Lite / Pro（Seedream）
 - Z-Image（Z-AI）
 - Grok Imagine（X）
-- Magnific Mystic：Realism / Fluid / Flexible / Zen
 - Magnific Google Nano Banana 2、Google Nano Banana Pro
-- Magnific GPT Image 2、GPT Image 2.5
+- Magnific GPT Image 2、GPT Image 2.5 Flare、GPT Image 2.5 Sunburst
 
 ### 视频
 
@@ -95,11 +95,17 @@ AZURE_API_KEY=
 - Seedance 2.0 / Fast / Mini（Bytedance）
 - Grok Imagine、Grok Imagine 1.5 Preview（X）
 - HappyHorse（Alibaba）
-- Magnific LTX Video 2.0 Pro：文生视频 / 图生视频
-- Magnific Kling 2.6 Pro：图生视频和音频生成
-- Magnific Seedance 2.5、2.0、2.0 Fast、2.0 Mini（支持最多 9 张参考图，或首帧与可选尾帧；两种输入方式不能同时使用，并支持比例、时长、分辨率和音频选项）
+- Magnific Seedance 2.5、2.0、2.0 Fast、2.0 Mini
 
-> Magnific 官方 API 的正式名称是“GPT Image 2”和“GPT Image 2.5”。另外，Magnific 文档将 Nano Banana 2 映射为 Nano Banana Pro Flash API 接口，代码已使用该正式接口路径。参考素材上传仅接受 PNG、JPEG、WebP、MP4、WebM、MOV、MP3、WAV、M4A 和 OGG；不兼容格式会在提交生成前给出明确提示。
+### 文本
+
+- GLM-5.3-Flash（智谱 AI / BigModel）
+
+> Magnific 官方 API 的正式名称是“GPT Image 2”和“GPT Image 2.5”，其中 GPT Image 2.5 在界面中拆分为 Flare 和 Sunburst 两个变体。另外，Magnific 文档将 Nano Banana 2 映射为 Nano Banana Pro Flash API 接口，代码已使用该正式接口路径。参考素材上传仅接受 PNG、JPEG、WebP、MP4、WebM、MOV、MP3、WAV、M4A 和 OGG；不兼容格式会在提交生成前给出明确提示。
+
+Magnific 的 Seedance 2.5 最多支持 30 张参考图、10 个参考视频和 10 个参考音频；Seedance 2.0、2.0 Fast、2.0 Mini 最多支持 9 张参考图、3 个参考视频和 3 个参考音频。参考图/视频与首尾帧模式不能同时使用；音频是否可以与首尾帧组合，会根据具体模型规则校验。GPT Image 2 和 GPT Image 2.5 在附加参考图时使用对应的编辑接口。
+
+GLM-5.3-Flash 的 API Key 可在 **设置 → API 密钥 → Zhipu AI** 中配置；它使用智谱 BigModel 官方的 OpenAI 兼容接口。
 
 ## 版本号管理
 

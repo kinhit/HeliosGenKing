@@ -244,7 +244,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
       rfNode.style.zIndex = "";
     }
     return () => { rfNode.style.zIndex = ""; };
-  }, [modelOpen, providerOpen, ratioOpen, qualityOpen, azureQualityOpen]);
+  }, [modelOpen, providerOpen, ratioOpen, qualityOpen, azureQualityOpen, azureResolutionOpen]);
 
   useEffect(() => {
     const anyOpen = modelOpen || providerOpen || ratioOpen || qualityOpen || azureQualityOpen || azureResolutionOpen;
@@ -256,7 +256,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [modelOpen, providerOpen, ratioOpen, qualityOpen, azureQualityOpen]);
+  }, [modelOpen, providerOpen, ratioOpen, qualityOpen, azureQualityOpen, azureResolutionOpen]);
 
   // Reset the custom-size subpanel whenever the ratio dropdown itself closes
   useEffect(() => {
@@ -825,7 +825,8 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
     >
       <CornerResizer minWidth={220} minHeight={80} keepAspectRatio={!!data.imageUrl} />
       <NodeActionBar
-        visible={!!selected && !data.locked && !parentGroupSelected && !multiSelected && !readOnly}
+        visible={!!selected && !data.locked && !parentGroupSelected && !multiSelected && !readOnly
+          && !(modelOpen || providerOpen || ratioOpen || qualityOpen || azureQualityOpen || azureResolutionOpen)}
         hasContent={!!data.imageUrl}
         isSaving={isSaving}
         onPreview={openLightbox}
@@ -1114,7 +1115,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
               {!data.imageUrl && <ChevronIcon open={modelOpen} />}
             </button>
             {modelPopup.visible && (
-              <div className={`absolute bottom-full left-0 mb-2 w-48 bg-[#111622] border border-[#1E2840] rounded-md overflow-hidden z-[1002] shadow-2xl ${modelPopup.className}`}>
+              <div className={`absolute bottom-full left-0 mb-2 w-56 max-h-[min(70vh,30rem)] overflow-y-auto bg-[#111622] border border-[#1E2840] rounded-md z-[1002] shadow-2xl ${modelPopup.className}`}>
                 {[...new Set(MODELS.map(m => m.meta))].map((provider, pi) => (
                   <Fragment key={provider}>
                     {pi > 0 && <div className="border-t border-white/[0.06] mx-2 my-0.5" />}

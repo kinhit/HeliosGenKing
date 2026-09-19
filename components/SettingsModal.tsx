@@ -165,7 +165,7 @@ interface SettingsModalProps {
 
 /* ─── Provider brand icons (kie/azure/codex backend pills) ───────────────────── */
 
-function ProviderBrandIcon({ id, size = 12 }: { id: ProviderId | "magnific"; size?: number }) {
+function ProviderBrandIcon({ id, size = 12 }: { id: ProviderId | "magnific" | "zhipu"; size?: number }) {
   if (id === "kie") {
     return (
       <span className="text-[#2DD4BF] shrink-0" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.83)}px`, fontWeight: 700 }}>
@@ -191,6 +191,13 @@ function ProviderBrandIcon({ id, size = 12 }: { id: ProviderId | "magnific"; siz
     return (
       <span className="text-[#F5B642] shrink-0" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.78)}px`, fontWeight: 800 }}>
         M
+      </span>
+    );
+  }
+  if (id === "zhipu") {
+    return (
+      <span className="text-[#A78BFA] shrink-0" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.72)}px`, fontWeight: 800 }}>
+        Z
       </span>
     );
   }
@@ -433,6 +440,9 @@ function ApiKeysPanel({
   magnificKeyStatus,
   onMagnificKeySave,
   onMagnificKeyDelete,
+  zhipuKeyStatus,
+  onZhipuKeySave,
+  onZhipuKeyDelete,
   azureKeyStatus,
   onAzureKeySave,
   onAzureKeyDelete,
@@ -447,6 +457,9 @@ function ApiKeysPanel({
   magnificKeyStatus: "unknown" | "set" | "unset";
   onMagnificKeySave: (key: string) => Promise<void>;
   onMagnificKeyDelete: () => Promise<void>;
+  zhipuKeyStatus: "unknown" | "set" | "unset";
+  onZhipuKeySave: (key: string) => Promise<void>;
+  onZhipuKeyDelete: () => Promise<void>;
   azureKeyStatus: "unknown" | "set" | "unset";
   onAzureKeySave: (key: string) => Promise<void>;
   onAzureKeyDelete: () => Promise<void>;
@@ -463,6 +476,9 @@ function ApiKeysPanel({
   const [magnificInput, setMagnificInput] = useState("");
   const [magnificSaving, setMagnificSaving] = useState(false);
   const [magnificError, setMagnificError] = useState<string | null>(null);
+  const [zhipuInput, setZhipuInput] = useState("");
+  const [zhipuSaving, setZhipuSaving] = useState(false);
+  const [zhipuError, setZhipuError] = useState<string | null>(null);
 
   type CodexLoginFlow =
     | { status: "idle" }
@@ -563,6 +579,20 @@ function ApiKeysPanel({
       setMagnificError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setMagnificSaving(false);
+    }
+  };
+
+  const handleZhipuSave = async () => {
+    if (!zhipuInput.trim()) return;
+    setZhipuSaving(true);
+    setZhipuError(null);
+    try {
+      await onZhipuKeySave(zhipuInput.trim());
+      setZhipuInput("");
+    } catch (e: unknown) {
+      setZhipuError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setZhipuSaving(false);
     }
   };
 
@@ -707,7 +737,7 @@ function ApiKeysPanel({
           <div>
             <div style={{ fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>Magnific</div>
             <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.28)", marginTop: "1px" }}>
-              {t("settings.magnific.description", "Mystic image generation and Magnific video models")}
+              {t("settings.magnific.description", "Google/OpenAI image generation and Seedance video models")}
             </div>
           </div>
           {magnificKeyStatus === "set" && (
@@ -736,6 +766,41 @@ function ApiKeysPanel({
             {magnificError && <p style={{ fontSize: "11px", color: "rgba(239,68,68,0.7)", margin: 0 }}>{magnificError}</p>}
             <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.2)", margin: 0, lineHeight: 1.5 }}>
               {t("settings.magnific.createKey", "Create a key at Magnific API Keys").replace("Magnific API Keys", "")}<a href="https://www.magnific.com/user/organization/api-keys" target="_blank" rel="noreferrer" style={{ color: "rgba(255,255,255,0.4)" }}>Magnific API Keys</a>
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ──── Zhipu AI API key ───────────────────────────────────────── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "16px", background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.14)", borderRadius: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ width: "28px", height: "28px", borderRadius: "7px", background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ProviderBrandIcon id="zhipu" size={16} />
+          </span>
+          <div>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>Zhipu AI</div>
+            <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.28)", marginTop: "1px" }}>
+              {t("settings.zhipu.description", "GLM-5.3-Flash text model")}
+            </div>
+          </div>
+          {zhipuKeyStatus === "set" && <span style={{ marginLeft: "auto", fontSize: "10px", fontWeight: 600, color: "rgba(74,222,128,0.8)", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "5px", padding: "2px 7px", letterSpacing: "0.04em" }}>SAVED</span>}
+        </div>
+        {zhipuKeyStatus === "unknown" ? (
+          <div style={{ height: "31px", borderRadius: "7px", background: "rgba(255,255,255,0.05)", animation: "skeleton-pulse 1.4s ease-in-out infinite" }} />
+        ) : zhipuKeyStatus === "set" ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <input type="password" value="placeholdertoken" readOnly style={{ ...INPUT_STYLE, flex: 1, cursor: "default", color: "rgba(255,255,255,0.3)" }} />
+            <button onClick={onZhipuKeyDelete} style={{ padding: "7px 12px", borderRadius: "7px", border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.06)", color: "rgba(239,68,68,0.7)", cursor: "pointer", fontSize: "12px", fontWeight: 500, whiteSpace: "nowrap" }}>{t("settings.remove", "Remove")}</button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input type="password" placeholder={t("settings.zhipu.keyPlaceholder", "Paste your Zhipu AI API key")} value={zhipuInput} onChange={(e) => setZhipuInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleZhipuSave(); }} style={{ ...INPUT_STYLE, flex: 1 }} />
+              <button onClick={handleZhipuSave} disabled={!zhipuInput.trim() || zhipuSaving} style={{ padding: "7px 14px", borderRadius: "7px", border: "none", background: zhipuInput.trim() ? "rgba(167,139,250,0.16)" : "rgba(255,255,255,0.04)", color: zhipuInput.trim() ? "rgba(196,181,253,0.95)" : "rgba(255,255,255,0.25)", cursor: zhipuInput.trim() ? "pointer" : "default", fontSize: "12px", fontWeight: 500, whiteSpace: "nowrap" }}>{zhipuSaving ? t("settings.saving", "Saving…") : t("settings.save", "Save")}</button>
+            </div>
+            {zhipuError && <p style={{ fontSize: "11px", color: "rgba(239,68,68,0.7)", margin: 0 }}>{zhipuError}</p>}
+            <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.2)", margin: 0, lineHeight: 1.5 }}>
+              <a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noreferrer" style={{ color: "rgba(255,255,255,0.4)" }}>{t("settings.zhipu.createKey", "Create a key in the Zhipu AI console")}</a>
             </p>
           </div>
         )}
@@ -1157,7 +1222,7 @@ function TextModelsPanel({
 }) {
   const { t } = useLanguage();
   const azureReady = azureKeyStatus === "set" && !!azureBaseUrl.trim();
-  const kieGroups = MODEL_GROUPS.filter(g => g.label !== "Azure");
+  const nonAzureGroups = MODEL_GROUPS.filter(g => g.label !== "Azure");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
@@ -1171,9 +1236,11 @@ function TextModelsPanel({
         </p>
       </div>
 
-      {/* Kie.ai models */}
+      {/* Non-Azure text models */}
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {kieGroups.map((group) => (
+        {nonAzureGroups.map((group) => {
+          const providerName = group.label === "Zhipu AI" ? "Zhipu AI" : "Kie.ai";
+          return (
           <div key={group.label}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
               <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "#e5e5e5", flexShrink: 0 }} />
@@ -1197,7 +1264,7 @@ function TextModelsPanel({
                       {m.label}
                     </div>
                     <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.28)", marginTop: "2px" }}>
-                      Kie.ai · {m.desc}
+                      {providerName} · {m.desc}
                     </div>
                   </div>
                   <span style={{
@@ -1207,14 +1274,14 @@ function TextModelsPanel({
                     fontSize: "11px", fontWeight: 500, color: "rgba(255,255,255,0.4)",
                     whiteSpace: "nowrap",
                   }}>
-                    <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>K</span>
-                    Kie.ai
+                    <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>{providerName === "Zhipu AI" ? "Z" : "K"}</span>
+                    {providerName}
                   </span>
                 </div>
               ))}
             </div>
           </div>
-        ))}
+        );})}
       </div>
 
       {/* Azure Auto card */}
@@ -1426,10 +1493,12 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [azureTextModelName, setAzureTextModelName]   = useState(() => loadAzureTextModelName());
   const [kieKeyStatus, setKieKeyStatus]               = useState<"unknown" | "set" | "unset">("unknown");
   const [magnificKeyStatus, setMagnificKeyStatus] = useState<"unknown" | "set" | "unset">("unknown");
+  const [zhipuKeyStatus, setZhipuKeyStatus] = useState<"unknown" | "set" | "unset">("unknown");
   const [azureKeyStatus, setAzureKeyStatus]   = useState<"unknown" | "set" | "unset">("unknown");
   const [codexStatus, setCodexStatus]         = useState<CodexStatus>({ kind: "unknown" });
   const setKieKeySet    = useWorkflowStore((s) => s.setKieKeySet);
   const setMagnificKeySet = useWorkflowStore((s) => s.setMagnificKeySet);
+  const setZhipuKeySet = useWorkflowStore((s) => s.setZhipuKeySet);
   const setAzureKeySet  = useWorkflowStore((s) => s.setAzureKeySet);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -1452,15 +1521,21 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     authHeader().then((h) =>
       fetch("/api/settings/kie-key", { headers: h })
         .then((r) => r.json())
-        .then((d) => setKieKeyStatus(d.hasToken ? "set" : "unset"))
-        .catch(() => setKieKeyStatus("unset"))
+        .then((d) => { setKieKeyStatus(d.hasToken ? "set" : "unset"); setKieKeySet(!!d.hasToken); })
+        .catch(() => { setKieKeyStatus("unset"); setKieKeySet(false); })
     );
     // Check if Azure key is saved on the server
     authHeader().then((h) =>
       fetch("/api/settings/azure-key", { headers: h })
         .then((r) => r.json())
-        .then((d) => setAzureKeyStatus(d.hasToken ? "set" : "unset"))
-        .catch(() => setAzureKeyStatus("unset"))
+        .then((d) => { setAzureKeyStatus(d.hasToken ? "set" : "unset"); setAzureKeySet(!!d.hasToken); })
+        .catch(() => { setAzureKeyStatus("unset"); setAzureKeySet(false); })
+    );
+    authHeader().then((h) =>
+      fetch("/api/settings/zhipu-key", { headers: h })
+        .then((r) => r.json())
+        .then((d) => { setZhipuKeyStatus(d.hasToken ? "set" : "unset"); setZhipuKeySet(!!d.hasToken); })
+        .catch(() => { setZhipuKeyStatus("unset"); setZhipuKeySet(false); })
     );
     authHeader().then((h) =>
       fetch("/api/settings/magnific-key", { headers: h })
@@ -1476,7 +1551,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     );
     // Check whether the server has a working codex-imagegen + codex login
     refreshCodexStatus();
-  }, [refreshCodexStatus]);
+  }, [refreshCodexStatus, setAzureKeySet, setKieKeySet, setMagnificKeySet, setZhipuKeySet]);
 
   /* Close on Escape */
   useEffect(() => {
@@ -1564,6 +1639,25 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     await fetch("/api/settings/magnific-key", { method: "DELETE", headers: h });
     setMagnificKeyStatus("unset");
     setMagnificKeySet(false);
+  };
+
+  const handleZhipuKeySave = async (key: string) => {
+    const h = await authHeader();
+    const res = await fetch("/api/settings/zhipu-key", {
+      method: "POST",
+      headers: { ...h, "Content-Type": "application/json" },
+      body: JSON.stringify({ zhipuApiKey: key }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error ?? "Failed to save");
+    setZhipuKeyStatus("set");
+    setZhipuKeySet(true);
+  };
+
+  const handleZhipuKeyDelete = async () => {
+    const h = await authHeader();
+    await fetch("/api/settings/zhipu-key", { method: "DELETE", headers: h });
+    setZhipuKeyStatus("unset");
+    setZhipuKeySet(false);
   };
 
   const handleAzureTextDeploymentChange = (v: string) => {
@@ -1790,6 +1884,9 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 magnificKeyStatus={magnificKeyStatus}
                 onMagnificKeySave={handleMagnificKeySave}
                 onMagnificKeyDelete={handleMagnificKeyDelete}
+                zhipuKeyStatus={zhipuKeyStatus}
+                onZhipuKeySave={handleZhipuKeySave}
+                onZhipuKeyDelete={handleZhipuKeyDelete}
                 azureKeyStatus={azureKeyStatus}
                 onAzureKeySave={handleAzureKeySave}
                 onAzureKeyDelete={handleAzureKeyDelete}

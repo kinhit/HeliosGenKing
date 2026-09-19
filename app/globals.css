@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Keep the desktop and CI builds offline-friendly. These variables preserve
+   the original font hooks while using local system fallbacks instead of
+   downloading Google Fonts during `next build`. */
+:root {
+  --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-doto: "Arial Black", Impact, sans-serif;
+}
+
 
 /* ── Base ─────────────────────────────────────────────── */
 html,

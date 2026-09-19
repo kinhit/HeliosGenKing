@@ -1,4 +1,6 @@
 import { jobStore } from "@/lib/jobStore";
+import { jobEvents } from "@/lib/jobEvents";
+import { ASYNC_GENERATION_TIMEOUT_MS } from "@/lib/jobTiming";
 import { uploadBuffer } from "@/lib/storage";
 import { getMagnificKeyForUser } from "@/lib/getMagnificKey";
 import { type ImageModel, type VideoModel } from "@/lib/modelConfig";
@@ -11,8 +13,6 @@ import {
 import * as guestDb from "@/lib/guest/db";
 
 const activeJobs = new Set<string>();
-const MAX_POLLS = 180; // up to roughly 20 minutes with the backoff below
-
 type PollOptions = {
   localTaskId: string;
   remoteTaskId: string;
@@ -26,6 +26,7 @@ async function fetchResult(url: string, apiKey: string): Promise<unknown> {
   const response = await fetch(url, {
     headers: { "x-magnific-api-key": apiKey },
     cache: "no-store",
+    signal: AbortSignal.timeout(60_000),
   });
   const text = await response.text();
   let payload: unknown = null;
@@ -40,7 +41,10 @@ async function fetchResult(url: string, apiKey: string): Promise<unknown> {
 }
 
 async function mirrorGenerated(url: string, type: "image" | "video"): Promise<string> {
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(10 * 60 * 1000),
+  });
   if (!response.ok) throw new Error(`Magnific output download failed (${response.status})`);
   const contentType = response.headers.get("content-type")
     ?? (type === "video" ? "video/mp4" : "image/jpeg");
@@ -54,13 +58,15 @@ async function runPoll(options: PollOptions): Promise<void> {
   const apiKey = await getMagnificKeyForUser();
   if (!apiKey) throw new Error("Magnific API key is not configured. Add it in Settings.");
 
-  const endpoint = options.type === "image"
+  const endpoint = options.statusEndpoint ?? (options.type === "image"
     ? (model as ImageModel).magnific?.endpoint
-    : options.statusEndpoint ?? (model as VideoModel).magnific?.statusEndpoint;
+    : (model as VideoModel).magnific?.statusEndpoint);
   if (!endpoint) throw new Error(`Magnific status endpoint is missing for ${options.modelId}`);
 
   const url = `${MAGNIFIC_BASE}${endpoint.replace(/\/$/, "")}/${encodeURIComponent(options.remoteTaskId)}`;
-  for (let attempt = 0; attempt < MAX_POLLS; attempt++) {
+  const deadline = Date.now() + ASYNC_GENERATION_TIMEOUT_MS;
+  let attempt = 0;
+  while (Date.now() < deadline) {
     const payload = await fetchResult(url, apiKey);
     const status = statusFromResponse(payload);
     const generated = generatedUrlsFromResponse(payload);
@@ -72,11 +78,15 @@ async function runPoll(options: PollOptions): Promise<void> {
       if (stored.length === 0) throw new Error("Magnific completed without an output URL");
 
       if (options.type === "video") {
-        jobStore.set(options.localTaskId, { status: "done", videoUrl: stored[0] });
+        const result = { status: "done" as const, videoUrl: stored[0] };
+        jobStore.set(options.localTaskId, result);
         guestDb.updateGeneration(options.localTaskId, { status: "done", video_url: stored[0] });
+        jobEvents.emit(`job:${options.localTaskId}`, result);
       } else {
-        jobStore.set(options.localTaskId, { status: "done", imageUrl: stored[0], imageUrls: stored });
+        const result = { status: "done" as const, imageUrl: stored[0], imageUrls: stored };
+        jobStore.set(options.localTaskId, result);
         guestDb.updateGeneration(options.localTaskId, { status: "done", image_url: stored[0], image_urls: stored });
+        jobEvents.emit(`job:${options.localTaskId}`, result);
       }
       return;
     }
@@ -90,6 +100,7 @@ async function runPoll(options: PollOptions): Promise<void> {
     }
 
     await new Promise((resolve) => setTimeout(resolve, Math.min(10_000, 2_000 + attempt * 250)));
+    attempt += 1;
   }
 
   throw new Error("Magnific task timed out while waiting for a result");
@@ -102,8 +113,10 @@ function start(options: PollOptions): void {
     .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       console.error("[magnific-poller]", options.localTaskId, message);
-      jobStore.set(options.localTaskId, { status: "error", error: message });
+      const result = { status: "error" as const, error: message };
+      jobStore.set(options.localTaskId, result);
       guestDb.updateGeneration(options.localTaskId, { status: "error", error_msg: message });
+      jobEvents.emit(`job:${options.localTaskId}`, result);
     })
     .finally(() => activeJobs.delete(options.localTaskId));
 }

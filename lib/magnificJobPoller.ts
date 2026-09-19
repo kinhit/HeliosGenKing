@@ -40,6 +40,11 @@ async function fetchResult(url: string, apiKey: string): Promise<unknown> {
   return payload;
 }
 
+function isRetryableStatusError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return !/Magnific status (400|401|403|404)/i.test(message);
+}
+
 async function mirrorGenerated(url: string, type: "image" | "video"): Promise<string> {
   const response = await fetch(url, {
     cache: "no-store",
@@ -67,7 +72,16 @@ async function runPoll(options: PollOptions): Promise<void> {
   const deadline = Date.now() + ASYNC_GENERATION_TIMEOUT_MS;
   let attempt = 0;
   while (Date.now() < deadline) {
-    const payload = await fetchResult(url, apiKey);
+    let payload: unknown;
+    try {
+      payload = await fetchResult(url, apiKey);
+    } catch (error) {
+      if (!isRetryableStatusError(error)) throw error;
+      console.warn("[magnific-poller] transient status error", options.localTaskId, error instanceof Error ? error.message : error);
+      await new Promise((resolve) => setTimeout(resolve, Math.min(15_000, 2_000 + attempt * 500)));
+      attempt += 1;
+      continue;
+    }
     const status = statusFromResponse(payload);
     const generated = generatedUrlsFromResponse(payload);
 
@@ -103,7 +117,7 @@ async function runPoll(options: PollOptions): Promise<void> {
     attempt += 1;
   }
 
-  throw new Error("Magnific task timed out while waiting for a result");
+  throw new Error(`Magnific ${model.name} task timed out while waiting for a result`);
 }
 
 function start(options: PollOptions): void {

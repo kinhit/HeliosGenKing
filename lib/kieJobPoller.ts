@@ -80,12 +80,25 @@ async function loop(taskId: string, apiKey: string, kind: Kind): Promise<void> {
           signal: AbortSignal.timeout(60_000),
         },
       );
+      if (!res.ok) {
+        const message = (await res.text()).slice(0, 500);
+        if ([400, 401, 403, 404, 422].includes(res.status)) {
+          settle(taskId, kind, { status: "error", error: `kie.ai status ${res.status}: ${message || "request failed"}` });
+          return;
+        }
+        throw new Error(`kie.ai status ${res.status}: ${message || "request failed"}`);
+      }
       const json = await res.json();
-      if (json?.code !== undefined && json.code !== 200 && json.code !== 0) {
+      const candidate = json?.data ?? json;
+      data = (candidate && typeof candidate === "object" ? candidate : {}) as Record<string, unknown>;
+      const hasState = typeof data.state === "string" || typeof data.status === "string";
+      // Kie has returned non-200 business codes (including 500/505) alongside
+      // a valid task record with state=success. Only treat a code as fatal when
+      // there is no usable task state to interpret.
+      if (json?.code !== undefined && json.code !== 200 && json.code !== 0 && !hasState) {
         settle(taskId, kind, { status: "error", error: json.msg ?? `kie.ai error ${json.code}` });
         return;
       }
-      data = (json?.data ?? json) as Record<string, unknown>;
     } catch (e) {
       console.warn(`[kie-poller] ${taskId} transient poll error:`, (e as Error).message);
       continue;
@@ -93,7 +106,7 @@ async function loop(taskId: string, apiKey: string, kind: Kind): Promise<void> {
 
     const state = String(data.state ?? data.status ?? "").toLowerCase();
 
-    if (state === "success" || state === "succeeded") {
+    if (state === "success" || state === "succeeded" || state === "completed" || state === "done") {
       const urls = extractUrls(data);
       if (urls.length === 0) {
         settle(taskId, kind, { status: "error", error: "Generation succeeded but returned no output" });
@@ -103,7 +116,7 @@ async function loop(taskId: string, apiKey: string, kind: Kind): Promise<void> {
       return;
     }
 
-    if (state === "fail" || state === "failed" || state === "error") {
+    if (state === "fail" || state === "failed" || state === "error" || state === "cancelled" || state === "canceled") {
       const msg =
         (data.failMsg as string) ?? (data.error as string) ?? (data.failReason as string) ?? "Generation failed";
       settle(taskId, kind, { status: "error", error: msg });
@@ -118,13 +131,14 @@ async function loop(taskId: string, apiKey: string, kind: Kind): Promise<void> {
 function extractUrls(data: Record<string, unknown>): string[] {
   const out: string[] = [];
 
-  const resultJson = data.resultJson as string | undefined;
+  const resultJson = data.resultJson as unknown;
   if (resultJson) {
     try {
-      const parsed = JSON.parse(resultJson);
-      const urls = parsed.resultUrls ?? parsed.resultUrl;
+      const parsed = typeof resultJson === "string" ? JSON.parse(resultJson) : resultJson;
+      const record = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+      const urls = record.resultUrls ?? record.resultUrl ?? record.result_urls ?? record.url ?? record.videoUrl;
       if (Array.isArray(urls)) out.push(...urls.filter(Boolean));
-      else if (urls) out.push(urls);
+      else if (typeof urls === "string" && urls) out.push(urls);
     } catch {
       /* fall through to the other shapes */
     }
@@ -135,7 +149,8 @@ function extractUrls(data: Record<string, unknown>): string[] {
     if (Array.isArray(output) && output[0]) out.push(String(output[0]));
     else if (typeof output === "string") out.push(output);
   }
-  return out;
+  if (out.length === 0 && Array.isArray(data.resultUrls)) out.push(...data.resultUrls.filter((url): url is string => typeof url === "string"));
+  return [...new Set(out.filter((url): url is string => typeof url === "string" && url.length > 0))];
 }
 
 async function settleSuccess(taskId: string, kind: Kind, kieUrls: string[]): Promise<void> {

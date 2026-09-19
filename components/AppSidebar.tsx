@@ -988,6 +988,9 @@ export function AppSidebar() {
       {/* ── Footer ── */}
       <SidebarFooter className="px-2 pb-4">
         <GitHubButtons />
+        <div className="group-data-[collapsible=icon]:hidden px-3 pb-2 text-[10px] text-white/25">
+          v{process.env.NEXT_PUBLIC_APP_VERSION ?? "dev"}
+        </div>
         <DropdownMenu>
 
           {/* Trigger: pixel avatar + name + credits */}

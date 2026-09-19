@@ -4,6 +4,9 @@ import { resumeKieJob } from "@/lib/kieJobPoller";
 import { resumeMagnificJob } from "@/lib/magnificJobPoller";
 import * as guestDb from "@/lib/guest/db";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function recoverJob(taskId: string): "done" | "error" | "pending" | "not_found" {
   const gen = guestDb.recoverJob(taskId);
   if (!gen) return "not_found";

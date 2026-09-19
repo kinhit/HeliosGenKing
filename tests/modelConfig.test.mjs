@@ -59,5 +59,6 @@ test("configures complete Magnific Seedance multimodal reference support", () =>
     assert.equal(model.apiInput.referenceAudiosKey, "reference_audios");
     assert.equal(model.referencePolicy?.audioExclusiveWithFrames, audioExclusive);
     assert.equal(model.resourceTagFormat, "magnific");
+    assert.equal(model.supportsSeeds, undefined, `${id} should not expose seed controls`);
   }
 });

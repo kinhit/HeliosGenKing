@@ -940,7 +940,7 @@ function GalleryInner() {
     toResume.forEach(async (pending) => {
       try {
         // Check immediately (no 3s delay) before entering the regular poll loop
-        const immediateRes = await fetch(`/api/job-status?taskId=${pending.taskId!}`);
+        const immediateRes = await fetch(`/api/job-status?taskId=${pending.taskId!}`, { cache: "no-store" });
         const immediateResult = await immediateRes.json() as { status: string; error?: string };
         if (immediateResult.status === "error") throw new Error(immediateResult.error ?? "Generation failed");
         if (immediateResult.status === "not_found") {
@@ -1794,7 +1794,7 @@ function GalleryInner() {
     const maxAttempts = Math.ceil(ASYNC_GENERATION_TIMEOUT_MS / 3_000);
     for (let i = 0; i < maxAttempts; i++) {
       await waitOrVisible(3_000);
-      const poll = await fetch(`/api/job-status?taskId=${taskId}`);
+      const poll = await fetch(`/api/job-status?taskId=${taskId}`, { cache: "no-store" });
       const result = await poll.json() as { status: string; error?: string };
       if (result.status === "done") return;
       if (result.status === "error") throw new Error(localizeGenerationError(locale, result.error ?? "Generation failed"));

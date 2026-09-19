@@ -11,6 +11,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { getFfmpegPath } from "@/lib/ffmpeg";
 
 const execFileAsync = promisify(execFile);
 
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     await writeFile(inputPath, videoBuffer);
 
     // Trim with ffmpeg: -ss before -i = fast seek; -t = duration; -c copy = no re-encode
-    await execFileAsync("ffmpeg", [
+    await execFileAsync(getFfmpegPath(), [
       "-ss", String(startTime),
       "-i",  inputPath,
       "-t",  String(endTime - startTime),

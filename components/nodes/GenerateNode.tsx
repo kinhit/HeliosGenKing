@@ -514,7 +514,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
 
     const doPoll = async () => {
       try {
-        const res = await fetch(`/api/job-status?taskId=${taskId}`);
+        const res = await fetch(`/api/job-status?taskId=${taskId}`, { cache: "no-store" });
         const json = await res.json();
         if (cancelled) return;
 

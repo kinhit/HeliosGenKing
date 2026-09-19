@@ -78,7 +78,7 @@ function ModelPicker({
           position: "absolute", right: 0, ...dropPos,
           minWidth: "180px", background: "rgba(14,16,18,0.98)",
           border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.6)", overflow: "hidden", zIndex: 100,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)", overflowY: "auto", maxHeight: "min(60vh, 420px)", overscrollBehavior: "contain", zIndex: 100,
         }}>
           <div style={{ padding: "4px" }}>
             {MODEL_GROUPS.map((group, gi) => (

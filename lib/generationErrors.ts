@@ -43,6 +43,9 @@ export function localizeGenerationError(locale: Locale, error: string): string {
   if (normalized.includes("reference audio requires at least one reference image or video")) {
     return translate(locale, "generation.audioRequiresVisual", error);
   }
+  if (normalized.includes("spawn ffmpeg enoent") || normalized.includes("spawn ffprobe enoent") || normalized.includes("requires ffmpeg")) {
+    return translate(locale, "generation.ffmpegMissing", error);
+  }
   if (normalized.includes("an end frame requires a start frame")) {
     return translate(locale, "generation.endFrameRequiresStart", error);
   }

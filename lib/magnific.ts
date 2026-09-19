@@ -46,20 +46,59 @@ export function magnificResolution(value: string): string {
   return value === "1k" ? "1k" : value === "4k" ? "4k" : value;
 }
 
+type JsonRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): JsonRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : null;
+}
+
+function stringValue(...values: unknown[]): string | null {
+  const value = values.find((item) => typeof item === "string" && item.trim().length > 0);
+  return typeof value === "string" ? value.trim() : null;
+}
+
+function responseRecords(payload: unknown): JsonRecord[] {
+  const root = asRecord(payload);
+  const data = asRecord(root?.data);
+  const task = asRecord(data?.task) ?? asRecord(root?.task);
+  const result = asRecord(data?.result) ?? asRecord(root?.result);
+  return [root, data, task, result].filter((value): value is JsonRecord => value !== null);
+}
+
 export function taskIdFromResponse(payload: unknown): string | null {
-  const data = (payload as { data?: { task_id?: unknown; taskId?: unknown; id?: unknown } })?.data;
-  const taskId = data?.task_id ?? data?.taskId ?? data?.id;
-  return typeof taskId === "string" && taskId ? taskId : null;
+  const records = responseRecords(payload);
+  return stringValue(...records.flatMap((record) => [record.task_id, record.taskId, record.id]))
+    ?? stringValue(...records.map((record) => record.task));
+}
+
+function urlsFromValue(value: unknown): string[] {
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  if (Array.isArray(value)) return value.flatMap(urlsFromValue);
+  const record = asRecord(value);
+  if (!record) return [];
+  return [record.url, record.video_url, record.videoUrl, record.image_url, record.imageUrl]
+    .flatMap(urlsFromValue);
 }
 
 export function generatedUrlsFromResponse(payload: unknown): string[] {
-  const generated = (payload as { data?: { generated?: unknown } })?.data?.generated;
-  return Array.isArray(generated) ? generated.filter((url): url is string => typeof url === "string" && url.length > 0) : [];
+  const records = responseRecords(payload);
+  const urls = records.flatMap((record) => [
+    record.generated,
+    record.output,
+    record.outputs,
+    record.url,
+    record.video_url,
+    record.videoUrl,
+    record.image_url,
+    record.imageUrl,
+  ]).flatMap(urlsFromValue);
+  return [...new Set(urls)];
 }
 
 export function statusFromResponse(payload: unknown): string {
-  const status = (payload as { data?: { status?: unknown } })?.data?.status;
-  return typeof status === "string" ? status.toUpperCase() : "UNKNOWN";
+  const records = responseRecords(payload);
+  const status = stringValue(...records.flatMap((record) => [record.status, record.state, record.task_status, record.taskStatus]));
+  return status?.toUpperCase() ?? "UNKNOWN";
 }
 
 export function buildMagnificImageInput(
@@ -143,7 +182,10 @@ export function buildMagnificVideoInput(opts: {
     input[model.apiInput.referenceAudiosKey] = opts.referenceAudioUrls;
   }
 
-  if (opts.seed !== undefined && Number.isFinite(opts.seed)) input.seed = opts.seed;
+  // Magnific's current Seedance documentation exposes seed on some routes,
+  // but HeliosGen intentionally keeps it disabled for these provider models to
+  // match the Kie.ai model controls and avoid sending unsupported parameters.
+  if (model.supportsSeeds && opts.seed !== undefined && Number.isFinite(opts.seed)) input.seed = opts.seed;
   if (magnific.includeAspectRatio) input.aspect_ratio = magnificVideoAspectRatio(opts.aspectRatio);
   if (magnific.includeFps) input.fps = opts.fps ?? magnific.defaultFps ?? 25;
 

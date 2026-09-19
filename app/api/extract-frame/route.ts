@@ -11,6 +11,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { getFfmpegPath } from "@/lib/ffmpeg";
 
 const execFileAsync = promisify(execFile);
 
@@ -38,25 +39,16 @@ export async function POST(req: NextRequest) {
     outputPath = join(tmpDir, "frame.jpg");
     await writeFile(inputPath, videoBuffer);
 
-    const { stdout: probeOut } = await execFileAsync("ffprobe", [
-      "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", inputPath,
-    ]);
-    const dur = parseFloat(probeOut.trim());
-    const safeDur = isNaN(dur) ? undefined : dur;
-
     let ffmpegArgs: string[];
     if (lastFrame) {
-      const seekTime = safeDur !== undefined ? Math.max(0, safeDur - 0.1) : 0;
-      ffmpegArgs = ["-ss", String(seekTime), "-i", inputPath, "-frames:v", "1", "-q:v", "2", "-y", outputPath];
+      // -sseof avoids a separate ffprobe dependency and works with streamed
+      // or container formats whose duration metadata is unavailable.
+      ffmpegArgs = ["-sseof", "-0.1", "-i", inputPath, "-frames:v", "1", "-q:v", "2", "-y", outputPath];
     } else {
-      // Clamp to 0.1s before the video end so ffmpeg always finds a frame to encode.
-      const clampedTime = safeDur !== undefined
-        ? Math.min(Math.max(0, timeSeconds), Math.max(0, safeDur - 0.1))
-        : Math.max(0, timeSeconds);
-      ffmpegArgs = ["-ss", String(clampedTime), "-i", inputPath, "-frames:v", "1", "-q:v", "2", "-y", outputPath];
+      ffmpegArgs = ["-ss", String(Math.max(0, timeSeconds)), "-i", inputPath, "-frames:v", "1", "-q:v", "2", "-y", outputPath];
     }
 
-    await execFileAsync("ffmpeg", ffmpegArgs);
+    await execFileAsync(getFfmpegPath(), ffmpegArgs);
 
     const frameBuffer = await readFile(outputPath);
     const cdnUrl = await uploadBuffer(frameBuffer, "image/jpeg", "references");

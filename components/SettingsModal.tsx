@@ -1747,6 +1747,9 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           >
             {t("nav.settings", "Settings")}
           </div>
+          <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.24)", padding: "0 10px 12px" }}>
+            v{process.env.NEXT_PUBLIC_APP_VERSION ?? "dev"}
+          </div>
 
           <div style={{ padding: "0 10px 12px" }}>
             <label htmlFor="settings-language" style={{ display: "block", fontSize: "10px", color: "rgba(255,255,255,0.28)", marginBottom: "5px" }}>

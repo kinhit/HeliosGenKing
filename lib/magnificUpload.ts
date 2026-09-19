@@ -14,6 +14,8 @@ import {
   mimeFromPath,
   normaliseMimeType,
   resolveMagnificMimeType,
+  toMagnificReferenceImage,
+  type MagnificReferenceImage,
 } from "@/lib/magnificMime";
 
 type MediaBytes = { bytes: Buffer; contentType: string };
@@ -57,8 +59,13 @@ type UploadTicket = {
   asset_url?: unknown;
 };
 
-/** Upload one local or remote media URL and return Magnific's temporary asset URL. */
-export async function uploadMagnificAsset(inputUrl: string, apiKey: string): Promise<string> {
+export type MagnificUploadedAsset = { url: string; contentType: string };
+
+/** Upload media and preserve the MIME type required by some generation APIs. */
+export async function uploadMagnificAssetWithMetadata(
+  inputUrl: string,
+  apiKey: string,
+): Promise<MagnificUploadedAsset> {
   const { bytes, contentType } = await readMedia(inputUrl);
   assertMagnificSupportedMimeType(contentType);
   const ticketResponse = await fetch(`${MAGNIFIC_BASE}/v1/ai/uploads/request-url`, {
@@ -93,5 +100,19 @@ export async function uploadMagnificAsset(inputUrl: string, apiKey: string): Pro
     throw new Error(`Magnific media upload failed (${uploadResponse.status})`);
   }
 
-  return ticket.asset_url;
+  return { url: ticket.asset_url, contentType };
+}
+
+/** Upload one local or remote media URL and return Magnific's temporary asset URL. */
+export async function uploadMagnificAsset(inputUrl: string, apiKey: string): Promise<string> {
+  return (await uploadMagnificAssetWithMetadata(inputUrl, apiKey)).url;
+}
+
+/** Upload a reference image and return Magnific's required object shape. */
+export async function uploadMagnificReferenceImage(
+  inputUrl: string,
+  apiKey: string,
+): Promise<MagnificReferenceImage> {
+  const uploaded = await uploadMagnificAssetWithMetadata(inputUrl, apiKey);
+  return toMagnificReferenceImage(uploaded.url, uploaded.contentType);
 }

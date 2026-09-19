@@ -1,5 +1,6 @@
 import { randomUUID, createHash } from "crypto";
 import { db } from "./sqlite";
+import { GENERATION_INSERT_SQL } from "./generationSql";
 
 /**
  * Guest-mode data access. SQLite-backed (see ./sqlite), but the exported API is
@@ -101,14 +102,7 @@ export function hashBuffer(buf: Buffer): string {
 export function insertGeneration(data: Omit<Generation, "id" | "created_at" | "updated_at">): void {
   const ts = now();
   db()
-    .prepare(`
-      INSERT INTO generations
-        (id, user_id, task_id, provider_task_id, provider_status_endpoint, provider, generation_type, status, prompt, model, aspect_ratio,
-         quality, azure_resolution, duration, kling_mode, sound, reference_image_urls,
-         image_url, image_urls, video_url, error_msg, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(task_id) DO NOTHING
-    `)
+    .prepare(GENERATION_INSERT_SQL)
     .run(
       randomUUID(), data.user_id ?? null, data.task_id, data.provider_task_id ?? null,
       data.provider_status_endpoint ?? null, data.provider ?? null,

@@ -64,3 +64,17 @@ export function assertMagnificSupportedMimeType(contentType: string | undefined)
     `Unsupported Magnific media type: ${received}. Supported types are PNG, JPEG, WebP, MP4, WebM, MOV, MP3, WAV, M4A, and OGG.`,
   );
 }
+
+export type MagnificReferenceImage = {
+  image: string;
+  mime_type: "image/png" | "image/jpeg" | "image/webp";
+  text?: string;
+};
+
+/** Build the object required by Nano Banana reference_images. */
+export function toMagnificReferenceImage(assetUrl: string, contentType: string): MagnificReferenceImage {
+  if (contentType !== "image/png" && contentType !== "image/jpeg" && contentType !== "image/webp") {
+    throw new Error(`Unsupported Magnific reference image type: ${contentType || "unknown"}.`);
+  }
+  return { image: assetUrl, mime_type: contentType };
+}

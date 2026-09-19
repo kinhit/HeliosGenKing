@@ -16,7 +16,9 @@ import { getAzureKeyForUser } from "@/lib/getAzureKey";
 import { getMagnificKeyForUser } from "@/lib/getMagnificKey";
 import { pollMagnificJob } from "@/lib/magnificJobPoller";
 import { MAGNIFIC_BASE, buildMagnificImageInput, taskIdFromResponse } from "@/lib/magnific";
-import { uploadMagnificAsset } from "@/lib/magnificUpload";
+import { uploadMagnificReferenceImage } from "@/lib/magnificUpload";
+import { magnificErrorMessage } from "@/lib/magnificError";
+import type { MagnificReferenceImage } from "@/lib/magnificMime";
 import { GUEST_USER_ID } from "@/lib/guestMode";
 import * as guestDb from "@/lib/guest/db";
 
@@ -352,12 +354,12 @@ export async function POST(req: NextRequest) {
     }
 
     const endpoint = `${MAGNIFIC_BASE}${cfg.magnific.endpoint}`;
-    let magnificImageUrls: string[] = [];
+    let magnificReferenceImages: MagnificReferenceImage[] = [];
     if (cfg.magnific.imageInputKey && r2ImageUrls.length > 0) {
       try {
         const maxImages = cfg.magnific.imageInputMax ?? cfg.maxImages ?? r2ImageUrls.length;
-        magnificImageUrls = await Promise.all(
-          r2ImageUrls.slice(0, maxImages).map((url) => uploadMagnificAsset(url, magnificKey)),
+        magnificReferenceImages = await Promise.all(
+          r2ImageUrls.slice(0, maxImages).map((url) => uploadMagnificReferenceImage(url, magnificKey)),
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -369,8 +371,11 @@ export async function POST(req: NextRequest) {
       prompt,
       aspectRatio,
       quality || cfg.defaultQuality || "2k",
-      magnificImageUrls,
+      magnificReferenceImages,
     );
+    if (debugOnly) {
+      return NextResponse.json({ debugPayload: input, debugEndpoint: endpoint });
+    }
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "x-magnific-api-key": magnificKey, "Content-Type": "application/json" },
@@ -380,9 +385,7 @@ export async function POST(req: NextRequest) {
     let payload: unknown = null;
     try { payload = text ? JSON.parse(text) : null; } catch { /* handled below */ }
     if (!res.ok) {
-      const message = (payload as { message?: string; error?: string })?.message
-        ?? (payload as { message?: string; error?: string })?.error
-        ?? text.slice(0, 500);
+      const message = magnificErrorMessage(payload, text);
       return NextResponse.json({ error: `Magnific error ${res.status}: ${message || "request failed"}` }, { status: res.status === 401 ? 401 : 502 });
     }
 

@@ -1,4 +1,5 @@
 import { IMAGE_MODELS, VIDEO_MODELS, type ImageModel, type VideoModel } from "@/lib/modelConfig";
+import type { MagnificReferenceImage } from "@/lib/magnificMime";
 
 export const MAGNIFIC_BASE = "https://api.magnific.com";
 
@@ -65,7 +66,7 @@ export function buildMagnificImageInput(
   prompt: string,
   aspectRatio: string,
   quality: string,
-  imageUrls: string[] = [],
+  referenceImages: MagnificReferenceImage[] = [],
 ): Record<string, unknown> {
   const qualityKey = model.apiInput.qualityKey ?? "resolution";
   const mappedQuality = model.apiInput.qualityMap?.[quality] ?? magnificResolution(quality);
@@ -82,10 +83,10 @@ export function buildMagnificImageInput(
   if (model.magnific?.model) input.model = model.magnific.model;
 
   const imageInputKey = model.magnific?.imageInputKey ?? model.apiInput.imageInputKey;
-  if (imageInputKey && imageUrls.length > 0) {
+  if (imageInputKey && referenceImages.length > 0) {
     input[imageInputKey] = model.magnific?.imageInputObjects
-      ? imageUrls.map((image) => ({ image }))
-      : imageUrls;
+      ? referenceImages
+      : referenceImages.map(({ image }) => image);
   }
 
   Object.assign(input, model.magnific?.extra ?? {});

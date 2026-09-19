@@ -9,6 +9,7 @@ import { getMagnificKeyForUser } from "@/lib/getMagnificKey";
 import { pollMagnificJob } from "@/lib/magnificJobPoller";
 import { MAGNIFIC_BASE, buildMagnificVideoInput, taskIdFromResponse } from "@/lib/magnific";
 import { uploadMagnificAsset } from "@/lib/magnificUpload";
+import { magnificErrorMessage } from "@/lib/magnificError";
 import { GUEST_USER_ID } from "@/lib/guestMode";
 import * as guestDb from "@/lib/guest/db";
 
@@ -140,9 +141,7 @@ export async function POST(req: NextRequest) {
     let created: unknown = null;
     try { created = createdText ? JSON.parse(createdText) : null; } catch { /* handled below */ }
     if (!createRes.ok) {
-      const message = (created as { message?: string; error?: string })?.message
-        ?? (created as { message?: string; error?: string })?.error
-        ?? createdText.slice(0, 500);
+      const message = magnificErrorMessage(created, createdText);
       return NextResponse.json({ error: `Magnific error ${createRes.status}: ${message || "request failed"}` }, { status: createRes.status === 401 ? 401 : 502 });
     }
 

@@ -2,7 +2,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
-import { IMAGE_MODELS, VIDEO_MODELS, AZURE_POPULAR_SIZES, validateAzureCustomSize } from "@/lib/modelConfig";
+import { IMAGE_MODELS, VIDEO_MODELS, AZURE_POPULAR_SIZES, validateAzureCustomSize, type ImageModel, type VideoModel } from "@/lib/modelConfig";
+import { magnificImageCreditLabel, magnificVideoCreditEstimate, magnificVideoRateLabel } from "@/lib/magnificPricing";
 import { PROVIDERS, getModelProvider, setModelProvider, modelHasProviderChoice } from "@/lib/providers";
 import { useWorkflowStore } from "@/lib/store";
 import { Maximize2, Minimize2, ShieldAlert, X } from "lucide-react";
@@ -294,6 +295,7 @@ function mergeByNewest(prev: GalleryItem[], incoming: GalleryItem[]): GalleryIte
 interface SavedSettings {
   prompt: string; modelId: string; aspectRatio: string;
   quality: string; count: number; duration: number; mode: string;
+  resolution?: string;
   sound?: boolean;
   refImageUrls?: string[];
   azureResolution?: string;
@@ -1098,9 +1100,15 @@ function GalleryInner() {
     setQuality(saved?.quality ?? "2k");
     setCount(saved?.count ?? 1);
     if ("defaultDuration" in model) setDuration(saved?.duration ?? (model as { defaultDuration: number }).defaultDuration ?? 5);
-    if ("defaultMode" in model) setMode(saved?.mode ?? (model as { defaultMode: string }).defaultMode ?? "");
-    if ("defaultResolution" in model) setResolution((model as { defaultResolution: string }).defaultResolution);
-    setSound(saved?.sound ?? false);
+    const resolvedMode = saved?.mode ?? ("defaultMode" in model ? (model as { defaultMode: string }).defaultMode : "");
+    setMode(resolvedMode);
+    if ("defaultResolution" in model) {
+      const videoModel = model as VideoModel;
+      const modeOptions = videoModel.resolutionOptionsByMode?.[resolvedMode];
+      const preferredResolution = saved?.resolution ?? videoModel.defaultResolution ?? "";
+      setResolution(modeOptions?.includes(preferredResolution) ? preferredResolution : modeOptions?.[0] ?? preferredResolution);
+    }
+    setSound(saved?.sound ?? ("defaultSound" in model ? model.defaultSound ?? false : false));
     const savedUrls = saved?.refImageUrls ?? [];
     const savedPrompt = resolvedPrompt;
     setRefImages(prev => {
@@ -1153,8 +1161,13 @@ function GalleryInner() {
     if (!m) return;
     setAspectRatio(("defaultRatio" in m ? m.defaultRatio : null) ?? m.ratios[0] ?? "1:1");
     if ("defaultDuration" in m) setDuration(m.defaultDuration ?? 5);
-    if ("defaultMode" in m) setMode(m.defaultMode ?? "");
-    if ("defaultResolution" in m) setResolution((m as { defaultResolution: string }).defaultResolution);
+    const defaultMode = "defaultMode" in m ? m.defaultMode ?? "" : "";
+    setMode(defaultMode);
+    if ("defaultResolution" in m) {
+      const videoModel = m as VideoModel;
+      setResolution(videoModel.resolutionOptionsByMode?.[defaultMode]?.[0] ?? videoModel.defaultResolution ?? "");
+    }
+    if ("sound" in m) setSound((m as VideoModel).defaultSound ?? false);
     if (!isVideo) {
       const im = m as { apiInput?: { qualityOptions?: string[] }; azureQualityOptions?: string[] };
       const provider = (() => { try { return JSON.parse(localStorage.getItem("aiui-model-providers") ?? "{}")[m.id] ?? "kie"; } catch { return "kie"; } })();
@@ -1248,7 +1261,7 @@ function GalleryInner() {
       .map(r => r.cdnUrl!))];
     const readyCdnUrl = (r: RefImage) => !r.uploading && !r.error && !!r.cdnUrl;
     const s: SavedSettings = {
-      prompt, modelId, aspectRatio, quality, count, duration, mode, sound, refImageUrls, azureResolution, azureCustomWidth, azureCustomHeight, promptTextMode, multiPromptMode,
+      prompt, modelId, aspectRatio, quality, count, duration, mode, resolution, sound, refImageUrls, azureResolution, azureCustomWidth, azureCustomHeight, promptTextMode, multiPromptMode,
       vidStartFrameUrl: vidStartFrame?.cdnUrl ?? null,
       vidEndFrameUrl: vidEndFrame?.cdnUrl ?? null,
       vidResourceUrls: vidResources.filter(readyCdnUrl).map(r => r.cdnUrl!),
@@ -1287,8 +1300,15 @@ function GalleryInner() {
     setQuality(saved?.quality ?? "2k");
     setCount(saved?.count ?? 1);
     if ("defaultDuration" in model) setDuration(saved?.duration ?? (model as { defaultDuration: number }).defaultDuration ?? 5);
-    if ("defaultMode" in model) setMode(saved?.mode ?? (model as { defaultMode: string }).defaultMode ?? "");
-    setSound(saved?.sound ?? false);
+    const resolvedMode = saved?.mode ?? ("defaultMode" in model ? (model as { defaultMode: string }).defaultMode : "");
+    setMode(resolvedMode);
+    if ("defaultResolution" in model) {
+      const videoModel = model as VideoModel;
+      const modeOptions = videoModel.resolutionOptionsByMode?.[resolvedMode];
+      const preferredResolution = saved?.resolution ?? videoModel.defaultResolution ?? "";
+      setResolution(modeOptions?.includes(preferredResolution) ? preferredResolution : modeOptions?.[0] ?? preferredResolution);
+    }
+    setSound(saved?.sound ?? ("defaultSound" in model ? model.defaultSound ?? false : false));
     setAzureResolution(saved?.azureResolution ?? "1k");
     setPromptTextMode(saved?.promptTextMode ?? "text");
     setMultiPromptMode(saved?.multiPromptMode ?? false);
@@ -2223,6 +2243,12 @@ function GalleryInner() {
   const azureResolutionOpts: string[] = isAzureProvider ? (imgModel?.azureResolutionOptions ?? []) : [];
   const durations = vidModel?.durations ?? [];
   const vidModes = vidModel?.modes ?? [];
+  const resolutionOptions = vidModel?.resolutionOptionsByMode?.[mode] ?? vidModel?.resolutions ?? [];
+  const magnificCreditEstimate = isVideo && vidModel
+    ? magnificVideoCreditEstimate(vidModel, resolution || vidModel.defaultResolution || "", duration, mode, locale)
+    : !isVideo && imgModel
+      ? magnificImageCreditLabel(imgModel, quality, locale)
+      : null;
   const hasRefImgs = refImages.length > 0;
   const allUploaded = refImages.every(r => !r.uploading);
   const vidRefHandles = (vidModel?.handles ?? []).filter(h => h !== "prompt");
@@ -4088,6 +4114,11 @@ function GalleryInner() {
                     label: m.name,
                     group: ("provider" in m ? (m as { provider: string }).provider : undefined),
                     providerIcon: "provider" in m ? <ProviderIcon provider={(m as { provider: string }).provider} /> : undefined,
+                    description: m.backend === "magnific"
+                      ? isVideo
+                        ? magnificVideoRateLabel(m as VideoModel, (m as VideoModel).defaultResolution ?? "", locale) ?? undefined
+                        : magnificImageCreditLabel(m as ImageModel, (m as ImageModel).defaultQuality ?? "2k", locale)?.label
+                      : undefined,
                   }))}
                   showChevron
                 />
@@ -4200,9 +4231,16 @@ function GalleryInner() {
                 {isVideo && vidModes.length > 0 && (
                   <CustomDropdown
                     value={mode}
-                    onChange={setMode}
+                    onChange={(nextMode) => {
+                      setMode(nextMode);
+                      const nextOptions = vidModel?.resolutionOptionsByMode?.[nextMode];
+                      if (nextOptions?.length && !nextOptions.includes(resolution)) setResolution(nextOptions[0]);
+                    }}
                     disabled={submitting}
-                    options={vidModes.map(m => ({ value: m.value, label: m.label }))}
+                    options={vidModes.map(m => ({
+                      value: m.value,
+                      label: locale === "zh-CN" && m.value === "draft" ? "草稿 · 480p" : m.label,
+                    }))}
                   />
                 )}
 
@@ -4212,8 +4250,30 @@ function GalleryInner() {
                     value={resolution || vidModel!.defaultResolution!}
                     onChange={setResolution}
                     disabled={submitting}
-                    options={vidModel!.resolutions!.map(r => ({ value: r, label: r }))}
+                    options={resolutionOptions.map(r => ({ value: r, label: r }))}
                   />
+                )}
+
+                {magnificCreditEstimate && (
+                  <span
+                    title={magnificCreditEstimate.detail}
+                    aria-label={magnificCreditEstimate.detail}
+                    style={{
+                      flexShrink: 0,
+                      padding: "0 9px",
+                      height: "32px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(0,0,0,0.35)",
+                      color: "#B9C7B0",
+                      fontSize: "11px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {magnificCreditEstimate.label}
+                  </span>
                 )}
 
                 {/* Sound toggle (video) */}
@@ -4819,6 +4879,7 @@ interface DropOption {
   value: string;
   label: string;
   group?: string;
+  description?: string;
   preview?: React.ReactNode;
   providerIcon?: React.ReactNode;
 }
@@ -5289,6 +5350,7 @@ function CustomDropdown({
                       onClick={() => { onChange(opt.value); setOpen(false); }}
                       preview={opt.preview}
                       providerIcon={opt.providerIcon}
+                      description={opt.description}
                     />
                   ))}
                 </div>
@@ -5302,6 +5364,7 @@ function CustomDropdown({
                   onClick={() => { onChange(opt.value); setOpen(false); }}
                   preview={opt.preview}
                   providerIcon={opt.providerIcon}
+                  description={opt.description}
                 />
               ))
             )}
@@ -5567,7 +5630,7 @@ function AspectRatioDropdown({
   );
 }
 
-function DropItem({ label, active, onClick, preview, providerIcon }: { label: string; active: boolean; onClick: () => void; preview?: React.ReactNode; providerIcon?: React.ReactNode }) {
+function DropItem({ label, active, onClick, preview, providerIcon, description }: { label: string; active: boolean; onClick: () => void; preview?: React.ReactNode; providerIcon?: React.ReactNode; description?: string }) {
   const [hovered, setHovered] = useState(false);
   return (
     <button
@@ -5602,7 +5665,8 @@ function DropItem({ label, active, onClick, preview, providerIcon }: { label: st
         </span>
       )}
       {preview}
-      {label}
+      <span style={{ flex: 1, minWidth: 0 }}>{label}</span>
+      {description && <span style={{ color: "#8C9B84", fontSize: "10px", flexShrink: 0 }}>{description}</span>}
     </button>
   );
 }

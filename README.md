@@ -191,8 +191,9 @@ window; the choice is saved locally for the next launch.
 
 Magnific models are available after adding a key under **Settings → API Keys**.
 The integration supports Google Nano Banana 2, Google Nano Banana Pro, GPT Image
-2, GPT Image 2.5 Flare, GPT Image 2.5 Sunburst, and Seedance 2.5 / 2.0 /
-2.0 Fast / 2.0 Mini. The previously exposed Magnific Mystic, LTX Video 2.0 Pro,
+2, GPT Image 2.5 Flare, GPT Image 2.5 Sunburst, Qwen Image 3.0 / Pro, Seedance
+2.5 / 2.0 / 2.0 Fast / 2.0 Mini, Wan 3.0 / Prime, and MiniMax H3 / H3 Max /
+H3 Max Turbo. Seedance 2.5 includes a Draft (480p) preset. The previously exposed Magnific Mystic, LTX Video 2.0 Pro,
 and Kling 2.6 Pro entries are intentionally removed because their Magnific API
 capabilities do not match the supported workflow contract.
 
@@ -206,6 +207,13 @@ videos, and 3 audios. Their visual-reference and start/end-frame modes are
 mutually exclusive; audio-reference rules are enforced per model before the
 request is submitted. Uploads accept PNG, JPEG, WebP, MP4, WebM, MOV, MP3, WAV,
 M4A, and OGG files.
+
+Generation controls show a public Magnific credit estimate for the selected
+image quality or video resolution and duration. These are reference values,
+not guaranteed API-account charges; Qwen Image 3.0 Pro is not listed on the
+public image-credit page. Some newly released model routes are not yet listed
+in Magnific's public API endpoint index, so availability depends on Magnific
+enabling the endpoint for the API account.
 
 GLM-5.3-Flash is available under **Settings → API Keys → Zhipu AI** and uses the
 official BigModel OpenAI-compatible endpoint.

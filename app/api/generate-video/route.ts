@@ -144,8 +144,12 @@ export async function POST(req: NextRequest) {
     const resolution = cfg.resolutions?.includes(requestedResolution)
       ? requestedResolution
       : (cfg.defaultResolution || cfg.resolutions?.[0] || "720p");
-    const createEndpoint = cfg.magnific.createEndpointByResolution?.[resolution] ?? cfg.magnific.createEndpoint;
-    const statusEndpoint = cfg.magnific.statusEndpointByResolution?.[resolution] ?? cfg.magnific.statusEndpoint;
+    const createEndpoint = cfg.magnific.createEndpointByModeResolution?.[mode]?.[resolution]
+      ?? cfg.magnific.createEndpointByResolution?.[resolution]
+      ?? cfg.magnific.createEndpoint;
+    const statusEndpoint = cfg.magnific.statusEndpointByModeResolution?.[mode]?.[resolution]
+      ?? cfg.magnific.statusEndpointByResolution?.[resolution]
+      ?? cfg.magnific.statusEndpoint;
     const requestedFps = Number(body.fps);
     const fps = Number.isFinite(requestedFps) ? requestedFps : (cfg.magnific.defaultFps ?? 25);
     const input = buildMagnificVideoInput({

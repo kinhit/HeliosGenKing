@@ -11,6 +11,7 @@ import { resolveInputs } from "@/lib/executor";
 import { useReadOnly } from "@/lib/readOnlyContext";
 import { ShieldBan } from "lucide-react";
 import { VIDEO_MODELS as VIDEO_MODEL_CFG } from "@/lib/modelConfig";
+import { magnificVideoCreditEstimate, magnificVideoRateLabel } from "@/lib/magnificPricing";
 import { useGeneratingBorderAnimation } from "@/lib/useGeneratingBorderAnimation";
 import MissingInputWarning from "./MissingInputWarning";
 import { localizeGenerationError } from "@/lib/generationErrors";
@@ -383,8 +384,9 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
   const mode = (data.klingMode as string) ?? cfg.defaultMode ?? "";
   const resolution = (data.grokResolution as string) ?? cfg.defaultResolution ?? "";
   const duration = (data.duration as number) ?? cfg.defaultDuration;
+  const magnificCredits = magnificVideoCreditEstimate(cfg, resolution, duration, mode, locale);
   const aspectRatio = (data.aspectRatio as string) ?? cfg.defaultRatio;
-  const sound = (data.sound as boolean) ?? false;
+  const sound = (data.sound as boolean) ?? cfg.defaultSound ?? false;
   const seed = (data.seed as number | undefined) ?? 0;
   const status = (data.status as string) ?? "idle";
   const prompt = (data.prompt as string) ?? "";
@@ -1791,22 +1793,32 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
               </div>
               <FloatMenu open={modeOpen}>
                 {cfg.modes.map((m) => (
-                  <FloatItem key={m.value} active={mode === m.value} onClick={() => { updateNodeData(id, { klingMode: m.value }); setModeOpen(false); }}>
-                    {m.label}
+                  <FloatItem key={m.value} active={mode === m.value} onClick={() => {
+                    const modeResolutions = cfg.resolutionOptionsByMode?.[m.value];
+                    updateNodeData(id, {
+                      klingMode: m.value,
+                      ...(modeResolutions?.length && !modeResolutions.includes(resolution)
+                        ? { grokResolution: modeResolutions[0] }
+                        : {}),
+                    });
+                    setModeOpen(false);
+                  }}>
+                    {locale === "zh-CN" && m.value === "draft" ? "草稿 · 480p" : m.label}
                   </FloatItem>
                 ))}
               </FloatMenu>
             </div>
           ) : null;
 
-          const resPicker = cfg.resolutions ? (
+          const resolutionOptions = cfg.resolutionOptionsByMode?.[mode] ?? cfg.resolutions;
+          const resPicker = resolutionOptions ? (
             <div className="relative shrink-0">
               <Pill onClick={() => { setGrokResOpen((o) => !o); setModelOpen(false); setRatioOpen(false); setDurOpen(false); setModeOpen(false); }}>
                 <span className="text-[11px] text-white/70">{resolution}</span>
                 <ChevronIcon open={grokResOpen} />
               </Pill>
               <FloatMenu open={grokResOpen}>
-                {cfg.resolutions.map((r) => (
+                {resolutionOptions.map((r) => (
                   <FloatItem key={r} active={resolution === r} onClick={() => { updateNodeData(id, { grokResolution: r }); setGrokResOpen(false); }}>
                     {r}
                   </FloatItem>
@@ -1851,7 +1863,14 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
                               const validRes = m.resolutions
                                 ? (m.resolutions.includes(resolution) ? resolution : (m.defaultResolution ?? m.resolutions[0]))
                                 : undefined;
-                              updateNodeData(id, { videoModel: m.id, aspectRatio: validRatio, duration: validDur, ...(validRes !== undefined && { grokResolution: validRes }) });
+                              updateNodeData(id, {
+                                videoModel: m.id,
+                                aspectRatio: validRatio,
+                                duration: validDur,
+                                klingMode: m.defaultMode ?? m.modes?.[0]?.value ?? "pro",
+                                ...(m.defaultSound !== undefined ? { sound: m.defaultSound } : {}),
+                                ...(validRes !== undefined && { grokResolution: validRes }),
+                              });
                               const removedHandles = (cfg.handles as string[]).filter((h) => !(m.handles as string[]).includes(h));
                               const wasMotionControl = cfg.apiInput.useMotionControl;
                               const isMotionControl = m.apiInput.useMotionControl;
@@ -1878,6 +1897,11 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
                               <NodeProviderIcon provider={m.provider} />
                             </span>
                             <span className="flex-1 text-left whitespace-nowrap">{m.name}</span>
+                            {m.backend === "magnific" && m.defaultResolution && (
+                              <span className="shrink-0 text-[9px] text-[#6F806F]">
+                                {magnificVideoRateLabel(m, m.defaultResolution, locale)}
+                              </span>
+                            )}
                           </button>
                         ))}
                       </Fragment>
@@ -1963,6 +1987,16 @@ export default function VideoGeneratorNode({ id, data, selected }: NodeProps<Vid
 
                 {modePicker}
                 {resPicker}
+                {magnificCredits && (
+                  <span
+                    className="shrink-0 px-2 py-1 rounded-full text-[10px] text-[#B9C7B0]"
+                    title={magnificCredits.detail}
+                    aria-label={magnificCredits.detail}
+                    style={{ background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  >
+                    {magnificCredits.label}
+                  </span>
+                )}
 
                 {/* Sound toggle */}
                 {cfg.sound && (

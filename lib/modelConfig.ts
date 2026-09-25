@@ -19,6 +19,12 @@ export interface ImageModel {
   provider: string;
   /** Backend used by the server. Omitted models continue to use Kie.ai. */
   backend?: "kie" | "magnific";
+  /** Public Magnific credit estimate; amounts may vary by account and promotion. */
+  magnificCredits?: {
+    unit: "image";
+    perImage?: number | { min: number; max: number };
+    byResolution?: Record<string, number | { min: number; max: number }>;
+  };
   /** Available aspect ratios */
   ratios: string[];
   /** Whether this model accepts reference images */
@@ -412,6 +418,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     name: "Google Nano Banana 2",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "image", byResolution: { "1k": 75, "2k": 75, "4k": 150 } },
     ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "5:4", "4:5", "21:9"],
     supportsImages: true,
     maxImages: 3,
@@ -441,6 +448,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     name: "Google Nano Banana Pro",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "image", byResolution: { "1k": 75, "2k": 75, "4k": 150 } },
     ratios: ["1:1", "16:9", "9:16", "4:3", "3:4", "4:5", "5:4", "2:3", "3:2", "21:9"],
     supportsImages: true,
     maxImages: 14,
@@ -470,6 +478,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     name: "GPT Image 2",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "image", perImage: { min: 15, max: 1000 } },
     ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
     supportsImages: true,
     maxImages: 16,
@@ -500,6 +509,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     name: "GPT Image 2.5 Flare",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "image", perImage: { min: 15, max: 1000 } },
     ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
     supportsImages: true,
     maxImages: 16,
@@ -530,6 +540,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     name: "GPT Image 2.5 Sunburst",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "image", perImage: { min: 15, max: 1000 } },
     ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
     supportsImages: true,
     maxImages: 16,
@@ -552,6 +563,66 @@ export const IMAGE_MODELS: ImageModel[] = [
       aspectRatioFormat: "mapped",
       qualityFormat: "lower",
       extra: { quality: "medium", variant: "sunburst" },
+    },
+  },
+  {
+    id: "magnific-qwen-image-3-0",
+    apiId: "qwen-image-3-0",
+    name: "Qwen Image 3.0",
+    provider: "Magnific",
+    backend: "magnific",
+    magnificCredits: { unit: "image", perImage: 50 },
+    ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
+    supportsImages: true,
+    maxImages: 1,
+    supportsQuality: true,
+    defaultQuality: "1k",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      imageInputKey: "reference_images",
+      qualityKey: "resolution",
+      qualityMap: { "1k": "1K", "2k": "2K", "4k": "4K" },
+      qualityOptions: ["1k", "2k", "4k"],
+      promptMaxLength: 12000,
+      outputFormat: "png",
+    },
+    magnific: {
+      endpoint: "/v1/ai/text-to-image/qwen-image-3-0",
+      imageInputKey: "reference_images",
+      imageInputMax: 1,
+      imageInputObjects: true,
+      aspectRatioFormat: "raw",
+      qualityFormat: "upper",
+    },
+  },
+  {
+    id: "magnific-qwen-image-3-0-pro",
+    apiId: "qwen-image-3-0-pro",
+    name: "Qwen Image 3.0 Pro",
+    provider: "Magnific",
+    backend: "magnific",
+    magnificCredits: { unit: "image" },
+    ratios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"],
+    supportsImages: true,
+    maxImages: 1,
+    supportsQuality: true,
+    defaultQuality: "2k",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      imageInputKey: "reference_images",
+      qualityKey: "resolution",
+      qualityMap: { "1k": "1K", "2k": "2K", "4k": "4K" },
+      qualityOptions: ["1k", "2k", "4k"],
+      promptMaxLength: 12000,
+      outputFormat: "png",
+    },
+    magnific: {
+      endpoint: "/v1/ai/text-to-image/qwen-image-3-0-pro",
+      imageInputKey: "reference_images",
+      imageInputMax: 1,
+      imageInputObjects: true,
+      aspectRatioFormat: "raw",
+      qualityFormat: "upper",
     },
   },
 ];
@@ -577,6 +648,11 @@ export interface VideoModel {
   provider: string;
   /** Backend used by the server. Omitted models continue to use Kie.ai. */
   backend?: "kie" | "magnific";
+  /** Public Magnific credit rate per generated second and output resolution. */
+  magnificCredits?: {
+    unit: "second";
+    byResolution: Record<string, number | { min: number; max: number }>;
+  };
   ratios: string[];
   durations: number[];
   defaultDuration: number;
@@ -590,6 +666,8 @@ export interface VideoModel {
   requiredHandles?: VideoHandle[];
   /** Show sound toggle in controls */
   sound: boolean;
+  /** Initial sound toggle value when no user choice is saved. */
+  defaultSound?: boolean;
   /** When true, prompt is not required to generate */
   promptOptional?: boolean;
   /** When true, model supports a seed parameter */
@@ -603,6 +681,8 @@ export interface VideoModel {
   /** Optional secondary resolution picker (shown in addition to modes) */
   resolutions?: string[];
   defaultResolution?: string;
+  /** Resolution choices that are valid for a selected model mode. */
+  resolutionOptionsByMode?: Record<string, string[]>;
   /** Max number of resource-handle images accepted by this model (default 3) */
   maxResources?: number;
   /** Max number of referenceVideo-handle videos accepted by this model (default 3) */
@@ -701,6 +781,9 @@ export interface VideoModel {
     createEndpointByResolution?: Record<string, string>;
     /** Resolution-specific status routes used by APIs such as Seedance 2.5. */
     statusEndpointByResolution?: Record<string, string>;
+    /** Mode-specific resolution routes, used by Seedance 2.5 Draft. */
+    createEndpointByModeResolution?: Record<string, Record<string, string>>;
+    statusEndpointByModeResolution?: Record<string, Record<string, string>>;
     inputMode: "text-to-video" | "image-to-video";
     /** Optional field used for an uploaded start/reference image. */
     imageInputKey?: string;
@@ -1275,6 +1358,7 @@ export const VIDEO_MODELS: VideoModel[] = [
     name: "Seedance 2.5",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "second", byResolution: { "480p": 200, "720p": 440, "1080p": 1100 } },
     ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
     defaultDuration: 5,
@@ -1289,7 +1373,13 @@ export const VIDEO_MODELS: VideoModel[] = [
       visualExclusiveWithFrames: true,
       audioExclusiveWithFrames: false,
     },
+    modes: [
+      { value: "standard", label: "Standard" },
+      { value: "draft", label: "Draft · 480p" },
+    ],
+    defaultMode: "standard",
     resolutions: ["480p", "720p", "1080p"],
+    resolutionOptionsByMode: { draft: ["480p"] },
     defaultResolution: "720p",
     apiInput: {
       aspectRatioKey: "aspect_ratio",
@@ -1313,6 +1403,14 @@ export const VIDEO_MODELS: VideoModel[] = [
         "720p": "/v1/ai/video/seedance-2-5-pro-720p",
         "1080p": "/v1/ai/video/seedance-2-5-pro-1080p",
       },
+      // Magnific's public API exposes 480p on the standard Seedance 2.5
+      // endpoint. Draft is a UI preset for that documented low-cost route.
+      createEndpointByModeResolution: {
+        draft: { "480p": "/v1/ai/video/seedance-2-5-pro-480p" },
+      },
+      statusEndpointByModeResolution: {
+        draft: { "480p": "/v1/ai/video/seedance-2-5-pro-480p" },
+      },
       inputMode: "image-to-video",
       imageInputKey: "image",
       endImageInputKey: "image_end",
@@ -1328,6 +1426,7 @@ export const VIDEO_MODELS: VideoModel[] = [
     name: "Seedance 2.0",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "second", byResolution: { "480p": 145, "720p": 280, "1080p": 700, "2160p": 1400 } },
     ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     defaultDuration: 5,
@@ -1378,6 +1477,7 @@ export const VIDEO_MODELS: VideoModel[] = [
     name: "Seedance 2.0 Fast",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "second", byResolution: { "480p": 120, "720p": 235 } },
     ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     defaultDuration: 5,
@@ -1426,6 +1526,7 @@ export const VIDEO_MODELS: VideoModel[] = [
     name: "Seedance 2.0 Mini",
     provider: "Magnific",
     backend: "magnific",
+    magnificCredits: { unit: "second", byResolution: { "480p": 70, "720p": 140 } },
     ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"],
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     defaultDuration: 5,
@@ -1468,5 +1569,187 @@ export const VIDEO_MODELS: VideoModel[] = [
       promptMaxLength: 40000,
     },
   },
+  // ── Magnific Wan 3.0 ───────────────────────────────────────────────────────
+  {
+    id: "magnific-wan-3-0",
+    apiId: "wan-3-0",
+    name: "Wan 3.0",
+    provider: "Magnific",
+    backend: "magnific",
+    magnificCredits: { unit: "second", byResolution: { "480p": 60, "720p": 120, "1080p": 240 } },
+    ratios: ["adaptive", "16:9", "4:3", "1:1", "3:4", "9:16"],
+    durations: Array.from({ length: 29 }, (_, i) => i + 2),
+    defaultDuration: 5,
+    defaultRatio: "16:9",
+    handles: ["prompt", "startFrame", "endFrame", "resource", "referenceVideo", "audioRef"],
+    resourceTagFormat: "magnific",
+    sound: true,
+    defaultSound: true,
+    maxResources: 10,
+    maxReferenceVideos: 5,
+    maxReferenceAudios: 5,
+    referencePolicy: { visualExclusiveWithFrames: true, audioExclusiveWithFrames: false },
+    resolutions: ["480p", "720p", "1080p"],
+    defaultResolution: "720p",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      durationMin: 2,
+      durationMax: 30,
+      referenceImagesKey: "reference_images",
+      referenceVideosKey: "reference_videos",
+      referenceAudiosKey: "reference_audios",
+      promptMaxLength: 20000,
+    },
+    magnific: {
+      createEndpoint: "/v1/ai/video/wan-3-0-720p",
+      statusEndpoint: "/v1/ai/video/wan-3-0",
+      createEndpointByResolution: {
+        "480p": "/v1/ai/video/wan-3-0-480p",
+        "720p": "/v1/ai/video/wan-3-0-720p",
+        "1080p": "/v1/ai/video/wan-3-0-1080p",
+      },
+      statusEndpointByResolution: {
+        "480p": "/v1/ai/video/wan-3-0",
+        "720p": "/v1/ai/video/wan-3-0",
+        "1080p": "/v1/ai/video/wan-3-0",
+      },
+      inputMode: "image-to-video",
+      imageInputKey: "image",
+      endImageInputKey: "image_end",
+      includeAspectRatio: true,
+      includeResolution: false,
+      soundKey: "generate_audio",
+      promptMaxLength: 20000,
+    },
+  },
+  {
+    id: "magnific-wan-3-0-prime",
+    apiId: "wan-3-0-prime",
+    name: "Wan 3.0 Prime",
+    provider: "Magnific",
+    backend: "magnific",
+    magnificCredits: { unit: "second", byResolution: { "480p": 100, "720p": 200, "1080p": 400 } },
+    ratios: ["adaptive", "16:9", "4:3", "1:1", "3:4", "9:16"],
+    durations: Array.from({ length: 29 }, (_, i) => i + 2),
+    defaultDuration: 5,
+    defaultRatio: "16:9",
+    handles: ["prompt", "startFrame", "endFrame", "resource", "referenceVideo", "audioRef"],
+    resourceTagFormat: "magnific",
+    sound: true,
+    defaultSound: true,
+    maxResources: 10,
+    maxReferenceVideos: 5,
+    maxReferenceAudios: 5,
+    referencePolicy: { visualExclusiveWithFrames: true, audioExclusiveWithFrames: false },
+    resolutions: ["480p", "720p", "1080p"],
+    defaultResolution: "720p",
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      durationMin: 2,
+      durationMax: 30,
+      referenceImagesKey: "reference_images",
+      referenceVideosKey: "reference_videos",
+      referenceAudiosKey: "reference_audios",
+      promptMaxLength: 20000,
+    },
+    magnific: {
+      createEndpoint: "/v1/ai/video/wan-3-0-prime-720p",
+      statusEndpoint: "/v1/ai/video/wan-3-0-prime",
+      createEndpointByResolution: {
+        "480p": "/v1/ai/video/wan-3-0-prime-480p",
+        "720p": "/v1/ai/video/wan-3-0-prime-720p",
+        "1080p": "/v1/ai/video/wan-3-0-prime-1080p",
+      },
+      statusEndpointByResolution: {
+        "480p": "/v1/ai/video/wan-3-0-prime",
+        "720p": "/v1/ai/video/wan-3-0-prime",
+        "1080p": "/v1/ai/video/wan-3-0-prime",
+      },
+      inputMode: "image-to-video",
+      imageInputKey: "image",
+      endImageInputKey: "image_end",
+      includeAspectRatio: true,
+      includeResolution: false,
+      soundKey: "generate_audio",
+      promptMaxLength: 20000,
+    },
+  },
+  // ── Magnific MiniMax H3 family ─────────────────────────────────────────────
+  ...([
+    {
+      id: "magnific-minimax-h3",
+      apiId: "minimax-h3",
+      name: "MiniMax H3",
+      resolutions: ["480p", "768p", "2K"],
+      defaultResolution: "2K",
+      rates: { "480p": 75, "768p": 92, "2K": 110 },
+    },
+    {
+      id: "magnific-minimax-h3-max",
+      apiId: "minimax-h3-max",
+      name: "MiniMax H3 Max",
+      resolutions: ["480p", "768p", "2K"],
+      defaultResolution: "2K",
+      rates: { "480p": 55, "768p": 80, "2K": 150 },
+    },
+    {
+      id: "magnific-minimax-h3-max-turbo",
+      apiId: "minimax-h3-max-turbo",
+      name: "MiniMax H3 Max Turbo",
+      resolutions: ["480p", "768p"],
+      defaultResolution: "768p",
+      rates: { "480p": 12, "768p": 20 },
+    },
+  ] as const).map((m): VideoModel => ({
+    id: m.id,
+    apiId: m.apiId,
+    name: m.name,
+    provider: "Magnific",
+    backend: "magnific",
+    magnificCredits: { unit: "second", byResolution: m.rates },
+    ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"],
+    durations: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    defaultDuration: 5,
+    defaultRatio: "16:9",
+    handles: ["prompt", "startFrame", "endFrame", "resource", "referenceVideo", "audioRef"],
+    resourceTagFormat: "magnific",
+    sound: true,
+    defaultSound: true,
+    maxResources: 9,
+    maxReferenceVideos: 3,
+    maxReferenceAudios: 3,
+    referencePolicy: {
+      visualExclusiveWithFrames: true,
+      audioExclusiveWithFrames: true,
+      audioRequiresVisualReference: true,
+    },
+    resolutions: [...m.resolutions],
+    defaultResolution: m.defaultResolution,
+    apiInput: {
+      aspectRatioKey: "aspect_ratio",
+      durationMin: 5,
+      durationMax: 15,
+      referenceImagesKey: "reference_images",
+      referenceVideosKey: "reference_videos",
+      referenceAudiosKey: "reference_audios",
+      promptMaxLength: 20000,
+    },
+    magnific: {
+      createEndpoint: `/v1/ai/video/${m.apiId}-${m.defaultResolution.toLowerCase()}`,
+      statusEndpoint: `/v1/ai/video/${m.apiId}`,
+      createEndpointByResolution: Object.fromEntries(m.resolutions.map((r) => [
+        r,
+        `/v1/ai/video/${m.apiId}-${r.toLowerCase()}`,
+      ])),
+      statusEndpointByResolution: Object.fromEntries(m.resolutions.map((r) => [r, `/v1/ai/video/${m.apiId}`])),
+      inputMode: "image-to-video",
+      imageInputKey: "image",
+      endImageInputKey: "image_end",
+      includeAspectRatio: true,
+      includeResolution: false,
+      soundKey: "generate_audio",
+      promptMaxLength: 20000,
+    },
+  })),
 
 ];

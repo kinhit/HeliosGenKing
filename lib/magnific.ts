@@ -18,6 +18,8 @@ const IMAGE_RATIOS: Record<string, string> = {
 };
 
 const VIDEO_RATIOS: Record<string, string> = {
+  "adaptive": "adaptive",
+  "auto": "adaptive",
   "21:9": "film_horizontal_21_9",
   "1:1": "square_1_1",
   "16:9": "widescreen_16_9",
@@ -39,7 +41,7 @@ export function magnificImageAspectRatio(value: string): string {
 }
 
 export function magnificVideoAspectRatio(value: string): string {
-  return VIDEO_RATIOS[value] ?? "widescreen_16_9";
+  return VIDEO_RATIOS[value] ?? (value === "adaptive" || value === "auto" ? "adaptive" : "widescreen_16_9");
 }
 
 export function magnificResolution(value: string): string {

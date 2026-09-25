@@ -18,12 +18,13 @@ type GenerateNodeType = Node<NodeData, "generateNode">;
 
 import { ShieldBan } from "lucide-react";
 import { IMAGE_MODELS, AZURE_POPULAR_SIZES, validateAzureCustomSize } from "@/lib/modelConfig";
+import { magnificImageCreditLabel } from "@/lib/magnificPricing";
 import { PROVIDERS, ProviderId, getModelProvider, setModelProvider, modelHasProviderChoice } from "@/lib/providers";
 import { useGeneratingBorderAnimation } from "@/lib/useGeneratingBorderAnimation";
 import MissingInputWarning from "./MissingInputWarning";
 
 // Derived from config — no hardcoding needed
-const MODELS = IMAGE_MODELS.map((m) => ({ id: m.id, name: m.name, meta: m.provider }));
+const MODELS = IMAGE_MODELS.map((model) => ({ id: model.id, name: model.name, meta: model.provider, model }));
 const MODEL_CAPS = Object.fromEntries(
   IMAGE_MODELS.map((m) => [m.id, {
     supportsImages: m.supportsImages,
@@ -382,6 +383,7 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
   const modelConfig = IMAGE_MODELS.find((m) => m.id === model);
   const isMagnificModel = modelConfig?.backend === "magnific";
   const quality = (data.quality as string) ?? "1k";
+  const magnificCredits = modelConfig ? magnificImageCreditLabel(modelConfig, quality, locale) : null;
   const status = data.status ?? "idle";
 
   const [currentProvider, setCurrentProvider] = useState<ProviderId>("kie");
@@ -1138,7 +1140,14 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
                         <span className="shrink-0 text-white/50" style={{ lineHeight: 0 }}>
                           <NodeProviderIcon provider={m.meta} />
                         </span>
-                        <span className="flex-1 text-left">{m.name}</span>
+                          <span className="flex-1 min-w-0 text-left">
+                            <span className="block truncate">{m.name}</span>
+                            {m.model.backend === "magnific" && (
+                              <span className="block mt-0.5 text-[9px] text-[#6F806F]">
+                                {magnificImageCreditLabel(m.model, m.model.defaultQuality ?? "1k", locale)?.label}
+                              </span>
+                            )}
+                          </span>
                         <span className="text-[#4A4A45]">{m.meta}</span>
                       </button>
                     ))}
@@ -1339,6 +1348,17 @@ export default function GenerateNode({ id, data, selected }: NodeProps<GenerateN
                 </div>
               )}
             </div>
+          )}
+
+          {magnificCredits && (
+            <span
+              className="shrink-0 px-2 py-1 rounded-full text-[10px] text-[#B9C7B0]"
+              title={magnificCredits.detail}
+              aria-label={magnificCredits.detail}
+              style={{ background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              {magnificCredits.label}
+            </span>
           )}
 
           {/* Azure Quality pill */}

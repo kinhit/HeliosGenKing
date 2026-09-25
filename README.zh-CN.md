@@ -85,13 +85,36 @@ HeliosGenKing 在保留原有工作流画布、图片/视频生成、素材库�
 
 - English / 简体中文语言选择，语言偏好保存在本地。
 - Magnific API 密钥管理入口。
-- Magnific 图片模型：Google Nano Banana 2、Google Nano Banana Pro、GPT Image 2、GPT Image 2.5 Flare、GPT Image 2.5 Sunburst。
-- Magnific 视频模型：Seedance 2.5、2.0、2.0 Fast、2.0 Mini。
+- Magnific 图片模型：Google Nano Banana 2、Google Nano Banana Pro、GPT Image 2、GPT Image 2.5 Flare、GPT Image 2.5 Sunburst、Qwen Image 3.0、Qwen Image 3.0 Pro。
+- Magnific 视频模型：Seedance 2.5、2.0、2.0 Fast、2.0 Mini、Wan 3.0、Wan 3.0 Prime、MiniMax H3、H3 Max、H3 Max Turbo。
+- Seedance 2.5 提供 Draft（480p）低成本草稿预设。
 - Zhipu AI 的 GLM-5.3-Flash 文本模型。
 - 本地图片在图生视频前上传到 Magnific 临时素材服务，结果再保存回本地媒体库。
 - 使用 SQLite 保存本地生成任务和远程任务 ID，应用重启后可以继续轮询未完成任务。
 
 Magnific 接口参考官方文档：[完整 API 文档](https://docs.magnific.com/llms-full.txt)、[文件上传](https://docs.magnific.com/upload-files)、[图像模型](https://www.magnific.com/ai/docs/image-ai-models)、[视频模型](https://www.magnific.com/ai/docs/video-ai-models)。
+
+### Magnific 公开积分参考价
+
+生成节点会在模型菜单和控制栏显示 Magnific 公开计费参考值；视频会按当前分辨率和时长估算单次费用。当前公开资料列出的参考价如下：
+
+| 模型 | 公开参考消耗 |
+| --- | --- |
+| Nano Banana 2 / Pro | 1K、2K：75；4K：150 积分/张 |
+| GPT Image 2 / 2.5（含 Flare、Sunburst） | 15–1,000 积分/张 |
+| Qwen Image 3.0 | 50 积分/张 |
+| Qwen Image 3.0 Pro | 官方积分页未列出，应用会显示“费用未公开” |
+| Seedance 2.5 | Draft、480p：200；720p：440；1080p：1,100 积分/秒 |
+| Seedance 2.0 | 480p：145；720p：280；1080p：700；4K：1,400 积分/秒 |
+| Seedance 2.0 Fast | 480p：120；720p：235 积分/秒 |
+| Seedance 2 Mini | 480p：70；720p：140 积分/秒 |
+| Wan 3.0 | 480p：60；720p：120；1080p：240 积分/秒 |
+| Wan 3.0 Prime | 480p：100；720p：200；1080p：400 积分/秒 |
+| MiniMax H3 | 480p：75；768p：92；2K：110 积分/秒 |
+| MiniMax H3 Max | 480p：55；768p：80；2K：150 积分/秒 |
+| MiniMax H3 Max Turbo | 480p：12；768p：20 积分/秒 |
+
+这些是 Magnific 公开页面中的参考值，不保证与每个 API 账号、订阅方案或促销期间的实际扣费完全一致。Seedance 2.5 的参考视频时长也可能计入计费时长；最终以 Magnific 账户账单为准。参考：[图片计费](https://www.magnific.com/ai/docs/ai-image-generator-credits)、[视频计费](https://www.magnific.com/ai/docs/ai-video-generator-credits)。新加入的 Wan 3.0、MiniMax H3 系列及 Qwen Image 3.0 系列尚未全部出现在公开 API endpoint 目录中，代码按 Magnific 已公开模型能力和现有异步接口约定接入；实际可用性还取决于你的 API 账号权限与服务端 endpoint 开放情况。
 
 ## 快速开始
 

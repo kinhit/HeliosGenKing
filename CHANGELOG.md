@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 - 2026-09-25
+
+- Added Magnific Qwen Image 3.0 and Qwen Image 3.0 Pro, including reference-image and resolution controls.
+- Added Magnific Wan 3.0 and Wan 3.0 Prime with 2–30 second durations, up to 10 image references, 5 video references, and 5 audio references.
+- Added Magnific MiniMax H3, H3 Max, and H3 Max Turbo with model-specific resolution tiers, reference media controls, and 5–15 second durations.
+- Added Seedance 2.5 Draft (480p), routed through Magnific's documented 480p endpoint and constrained to 480p while Draft is selected.
+- Added Magnific credit estimates to image and video model menus and generation controls; video estimates recalculate from resolution and duration, and unpublished prices are identified instead of guessed.
+- Documented new model availability caveats and public reference pricing in both READMEs.
+
 ## 1.5.1 - 2026-09-19
 
 - Fixed completed video generations being marked as failed when optional local ffmpeg metadata cleanup was unavailable.
